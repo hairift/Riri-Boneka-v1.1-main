@@ -1,0 +1,28 @@
+# Kerangka layanan
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+httpx==0.28.1
+
+# Alur RAG berbasis graf
+langgraph==0.2.60
+langchain-core==0.3.28
+
+# Basis data vektor dan pengurai dokumen
+chromadb==0.5.23
+sentence-transformers==3.3.1
+pypdf==5.1.0
+python-docx==1.1.2
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# Pencarian web
+duckduckgo-search==7.2.1
+
+# Singgahan dan memori percakapan
+redis==5.2.1
+
+# Pencarian lagu dan transkode
+google-api-python-client==2.157.0
+yt-dlp==2024.12.13

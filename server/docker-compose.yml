@@ -1,0 +1,48 @@
+# Menjalankan server Riri beserta Redis di komputer sendiri.
+#
+#   cd server
+#   docker compose up -d --build
+#
+# Setelah menyala, isi CONFIG_RIRI_SERVER_URL di firmware dengan
+# http://<ip-komputer>:8000
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: riri-redis
+    restart: unless-stopped
+    # Singgahan boleh hilang saat mati, jadi tidak perlu penyimpanan permanen.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  riri-server:
+    build: .
+    container_name: riri-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Harus sama dengan CONFIG_RIRI_SERVER_SECRET di firmware.
+      RIRI_SECRET_KEY: "riri-boneka-2026"
+      # Kunci YouTube Data API v3 untuk mencari lagu.
+      YOUTUBE_API_KEY: "${YOUTUBE_API_KEY:-}"
+      YOUTUBE_REGION: "ID"
+      REDIS_URL: "redis://redis:6379/0"
+      CACHE_TTL_SEARCH: "600"
+      REQUIRE_AUTH: "true"
+    volumes:
+      # Dokumen sumber RAG dan singgahan lagu disimpan di luar kontainer supaya
+      # tidak hilang saat citra dibangun ulang.
+      - ./data:/app/data
+      - riri-music:/app/music_cache
+      - riri-vector:/app/vectorstore
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  riri-music:
+  riri-vector:
