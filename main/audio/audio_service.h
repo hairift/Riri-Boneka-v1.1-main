@@ -38,7 +38,12 @@
 
 #define OPUS_FRAME_DURATION_MS 60
 #define MAX_ENCODE_TASKS_IN_QUEUE 2
-#define MAX_PLAYBACK_TASKS_IN_QUEUE 2
+// Tambahan Riri Boneka: cadangan potongan audio yang sudah didekode.
+// Nilai dua setara 120 milidetik dan terlalu tipis. Bila dekoder tertahan
+// lebih lama dari itu, pengeras suara kehabisan data dan suara terdengar
+// putus. Empat potongan memberi cadangan 240 milidetik dengan tambahan
+// memori yang kecil.
+#define MAX_PLAYBACK_TASKS_IN_QUEUE 4
 #define MAX_DECODE_PACKETS_IN_QUEUE (2400 / OPUS_FRAME_DURATION_MS)
 #define MAX_SEND_PACKETS_IN_QUEUE (2400 / OPUS_FRAME_DURATION_MS)
 #define AUDIO_TESTING_MAX_DURATION_MS 10000
@@ -179,6 +184,8 @@ private:
     int decoder_frame_size_ = 0;
     DebugStatistics debug_statistics_;
     bool initialized_ = false;  // Tambahan Riri Boneka
+    uint32_t decode_drop_count_ = 0;        // Tambahan Riri Boneka
+    int64_t last_decode_drop_log_time_ = 0;  // Tambahan Riri Boneka
     int64_t last_encode_drop_log_time_ = 0;
     srmodel_list_t* models_list_ = nullptr;
 

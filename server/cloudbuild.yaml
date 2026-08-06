@@ -1,0 +1,52 @@
+# Pipeline Cloud Build untuk menerapkan server Riri ke Cloud Run.
+#
+# Dipakai bila ingin penerapan otomatis setiap kali mendorong ke GitHub.
+# Untuk penerapan manual sekali jalan, cukup pakai perintah gcloud run deploy
+# yang ada di DEPLOY_CLOUDRUN.md.
+substitutions:
+  _SERVICE: riri-server
+  _REGION: asia-southeast2
+
+steps:
+  # Bangun citra kontainer.
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}:$COMMIT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}:latest
+      - .
+
+  # Kirim citra ke Artifact Registry.
+  - name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, '${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}']
+
+  # Terapkan ke Cloud Run.
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      # Model embedding dan pemeringkat ulang butuh memori yang cukup.
+      - --memory=2Gi
+      - --cpu=2
+      # Transkode lagu dapat memakan waktu, jadi batas waktunya dilonggarkan.
+      - --timeout=600
+      # CPU tetap menyala agar transkode di latar tidak dicekik.
+      - --no-cpu-throttling
+      - --max-instances=2
+      - --concurrency=8
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/riri/${_SERVICE}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8

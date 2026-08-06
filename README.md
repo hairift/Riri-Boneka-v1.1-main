@@ -91,8 +91,16 @@ cd server
 docker compose up -d --build
 ```
 
-Server ini juga tersedia sebagai repositori tersendiri yang siap diunggah ke
-Render.com: **https://github.com/hairift/Server-Python-IoT**
+Menerapkan server ke Google Cloud Run, lihat
+[panduan lengkapnya](server/DEPLOY_CLOUDRUN.md):
+
+```powershell
+cd server
+gcloud run deploy riri-server --source . --region asia-southeast2 --allow-unauthenticated
+```
+
+Cermin kode servernya juga tersedia di
+**https://github.com/hairift/Server-Python-IoT**
 
 Rincian lengkap ada di [panduan build dan flash](docs/riri-build.md).
 

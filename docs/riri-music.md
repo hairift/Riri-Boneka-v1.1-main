@@ -112,7 +112,7 @@ saat perangkat keluar dari status menganggur, atau saat berkas lagu selesai.
 | Pesan di log `MusicPlayer` | Penyebab dan tindakan |
 |---|---|
 | `URL server musik belum diisi di menuconfig` | Isi `CONFIG_RIRI_SERVER_URL` |
-| `Server musik ... tidak menjawab` | Server belum jalan, alamat salah, atau layanan Render sedang tidur |
+| `Server musik ... tidak menjawab` | Server belum jalan, alamat salah, atau instance Cloud Run sedang dibangunkan |
 | `Server musik menolak permintaan` | `CONFIG_RIRI_SERVER_SECRET` berbeda dengan `RIRI_SECRET_KEY` di server |
 | `Server musik tidak menemukan lagu` | Judul terlalu pendek atau salah dengar. Sebutkan judul dan penyanyi lebih lengkap |
 | `Data musik menipis, mengisi ulang penyangga` | Wi-Fi tersendat. Sesekali wajar; sering berarti sinyal lemah |

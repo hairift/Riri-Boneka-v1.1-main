@@ -1,0 +1,11 @@
+# Berkas yang tidak perlu ikut diunggah ke Cloud Build.
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+.env
+music_cache/
+vectorstore/
+*.mp3
+*.log
+docker-compose.yml

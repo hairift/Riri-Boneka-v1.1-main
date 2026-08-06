@@ -84,7 +84,7 @@ tidak putus-putus saat pencarian berjalan.
 | Batas bacaan | Hanya dua kalimat pertama yang dikirim ke perangkat, supaya boneka cepat mulai berbicara |
 
 Bila `REDIS_URL` kosong, singgahan otomatis memakai memori proses sehingga server
-tetap berjalan di Render.com paket gratis.
+tetap berjalan tanpa Redis.
 
 ## Musik
 
@@ -119,34 +119,37 @@ Memeriksa kesiapan:
 curl http://localhost:8000/health
 ```
 
-## Menerapkan ke Render.com
+## Menerapkan ke Google Cloud Run
 
-Kode servernya juga tersedia sebagai repositori tersendiri yang siap dipakai
-Render, lengkap dengan panduan langkah demi langkah:
+Panduan langkah demi langkah lengkap ada di
+[server/DEPLOY_CLOUDRUN.md](../server/DEPLOY_CLOUDRUN.md).
 
-**https://github.com/hairift/Server-Python-IoT**
-
-1. Fork atau unggah repositori itu ke akun GitHub Anda.
-2. Di Render.com pilih **New**, lalu **Blueprint**, arahkan ke repositori itu.
-   Berkas `render.yaml` menyiapkan layanan webnya. Singgahan memakai memori
-   proses secara bawaan; Redis dapat ditambahkan belakangan lewat dashboard.
-3. Isi Environment Variables:
-   - `RIRI_SECRET_KEY` sama dengan `CONFIG_RIRI_SERVER_SECRET` di firmware
-   - `YOUTUBE_API_KEY` berisi kunci YouTube Data API v3
-4. Tunggu penerapan selesai, lalu salin URL layanannya.
-5. Isikan URL itu ke firmware:
+Ringkasnya, setelah Google Cloud CLI terpasang dan penagihan proyek aktif:
 
 ```powershell
-idf.py menuconfig
-# Riri Boneka -> URL server Riri
-idf.py build
-idf.py -p COM7 -b 460800 flash
+cd server
+gcloud run deploy riri-server `
+  --source . `
+  --region asia-southeast2 `
+  --allow-unauthenticated `
+  --memory 2Gi --cpu 2 --timeout 600 --no-cpu-throttling `
+  --set-env-vars "RIRI_SECRET_KEY=riri-boneka-2026,REQUIRE_AUTH=true"
 ```
 
-Paket gratis Render menidurkan layanan yang lama menganggur, sehingga permintaan
-pertama setelah lama diam dapat memakan puluhan detik. Firmware sudah membatasi
-waktu tunggu supaya jawabannya tidak menggantung: bila server belum bangun,
-Riri memakai data lokal lebih dulu.
+Ambil alamatnya:
+
+```powershell
+gcloud run services describe riri-server --region asia-southeast2 --format="value(status.url)"
+```
+
+Lalu isikan alamat itu ke firmware lewat `idf.py menuconfig`, menu
+**Riri Boneka**, bagian **URL server Riri**.
+
+Dengan `--min-instances=0` layanan berhenti total saat menganggur sehingga tidak
+ada biaya berjalan. Konsekuensinya permintaan pertama setelah lama diam
+memerlukan waktu bangun sekitar 20 sampai 40 detik. Firmware sudah membatasi
+waktu tunggunya, jadi bila server belum bangun, Riri memakai data kampus lokal
+lebih dulu dan tidak pernah diam menggantung.
 
 ## Pengaturan
 

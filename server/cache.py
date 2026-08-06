@@ -1,8 +1,8 @@
 """Singgahan hasil pencarian dan lagu.
 
 Memakai Redis bila REDIS_URL diisi, dan jatuh ke singgahan dalam memori proses
-bila tidak. Dengan begitu server tetap berjalan di Render.com paket gratis yang
-tidak menyediakan Redis.
+bila tidak. Dengan begitu server tetap berjalan pada Cloud Run yang tidak
+menyediakan Redis bawaan.
 """
 
 from __future__ import annotations

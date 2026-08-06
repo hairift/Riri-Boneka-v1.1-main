@@ -1,7 +1,7 @@
 """Pengaturan server Riri.
 
 Seluruh nilai dapat ditimpa lewat variabel lingkungan, sehingga penerapan di
-Render.com cukup mengisi Environment Variables tanpa mengubah kode.
+Cloud Run cukup memakai --set-env-vars tanpa mengubah kode.
 """
 
 from __future__ import annotations
@@ -21,7 +21,18 @@ class Pengaturan(BaseSettings):
 
     # ------------------------------------------------------------- YouTube
     # Kunci YouTube Data API v3 untuk mencari lagu.
-    youtube_api_key: str = ""
+    #
+    # PERINGATAN KEAMANAN
+    # Nilai bawaan di bawah ini ikut tersimpan di repositori publik atas
+    # permintaan pemilik proyek. Kunci yang terlihat publik biasanya ditemukan
+    # perayap otomatis dalam hitungan jam, lalu kuotanya dipakai orang lain
+    # sampai habis. Bila pencarian lagu tiba-tiba berhenti bekerja, itulah
+    # penyebab yang paling mungkin.
+    #
+    # Cara memperbaikinya: buat kunci baru di Google Cloud Console, hapus yang
+    # lama, lalu isi lewat variabel lingkungan YOUTUBE_API_KEY saat menerapkan.
+    # Nilai dari variabel lingkungan selalu mengalahkan nilai bawaan ini.
+    youtube_api_key: str = "AIzaSyD5eA84gab7SrwXDJSKA32QrtqmrK2JtPw"
     # Wilayah pencarian lagu. ID membuat lagu populer Indonesia lebih mudah
     # ditemukan tanpa mengurangi jangkauan lagu internasional.
     youtube_region: str = "ID"

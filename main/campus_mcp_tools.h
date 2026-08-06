@@ -89,7 +89,11 @@ public:
             [](const PropertyList& props) -> ReturnValue {
                 std::string keyword = props["keyword"].value<std::string>();
                 ESP_LOGI(CAMPUS_MCP_TAG, "Campus query: %s", keyword.c_str());
-                std::vector<char> result_buf(32768, '\0');
+                // Tambahan Riri Boneka: penyangga diperkecil dari 32 KB.
+                // RAM internal bebas perangkat ini tinggal sekitar 85 KB saat
+                // percakapan aktif, dan hasil kampus tetap dipotong ke 3000
+                // karakter sebelum dikirim, jadi 12 KB sudah lebih dari cukup.
+                std::vector<char> result_buf(12288, '\0');
                 // Data lokal menjadi sumber utama agar jawaban tetap tersedia tanpa server RAG.
                 const char* result = SearchCampusData(keyword.c_str(), result_buf.data(), static_cast<int>(result_buf.size()));
                 if (!CampusResultLooksUsable(result)) {

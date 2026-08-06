@@ -209,12 +209,21 @@ void AudioService::Start() {
     }, "audio_output", 2048, this, 4, &audio_output_task_handle_);
 #endif
 
-    /* Start the opus codec task */
-    xTaskCreate([](void* arg) {
+    /* Start the opus codec task
+     *
+     * Tambahan Riri Boneka: tugas ini disematkan ke inti 1.
+     *
+     * Inti 0 sudah menampung tugas Wi-Fi, tugas utama aplikasi, dan tugas
+     * masukan audio beserta AFE. Dekode dan enkode Opus adalah beban hitung
+     * terberat di sistem. Saat ikut berebut inti 0, dekode tertinggal ketika
+     * AI berbicara panjang sehingga suara terdengar patah-patah, dan tugas
+     * idle inti 0 tidak mendapat giliran sehingga task watchdog menembak lalu
+     * perangkat mulai ulang sendiri. Inti 1 sebelumnya nyaris menganggur. */
+    xTaskCreatePinnedToCore([](void* arg) {
         AudioService* audio_service = (AudioService*)arg;
         audio_service->OpusCodecTask();
         vTaskDelete(NULL);
-    }, "opus_codec", 2048 * 12, this, 2, &opus_codec_task_handle_);
+    }, "opus_codec", 2048 * 12, this, 2, &opus_codec_task_handle_, 1);
 }
 
 void AudioService::Stop() {
@@ -643,6 +652,20 @@ bool AudioService::PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> pa
                     audio_decode_queue_.size() < MAX_DECODE_PACKETS_IN_QUEUE;
             });
         } else {
+            // Tambahan Riri Boneka: paket yang terbuang harus terlihat.
+            //
+            // Sebelumnya paket TTS dibuang tanpa catatan apa pun, sehingga
+            // suara patah-patah saat AI berbicara panjang tidak dapat dilacak
+            // penyebabnya. Catatan dibatasi satu kali per detik agar log tidak
+            // ikut membanjiri dan memperparah keadaan.
+            const int64_t sekarang = esp_timer_get_time();
+            ++decode_drop_count_;
+            if (sekarang - last_decode_drop_log_time_ > 1000000) {
+                last_decode_drop_log_time_ = sekarang;
+                ESP_LOGW(TAG, "Antrean dekode penuh, %lu paket TTS terbuang. "
+                              "Jaringan lambat atau dekode tertinggal.",
+                         static_cast<unsigned long>(decode_drop_count_));
+            }
             return false;
         }
     }

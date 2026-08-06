@@ -1,4 +1,7 @@
-# Server Riri Boneka: RAG kampus, pencarian web, dan pemutar musik.
+# Server Riri Boneka untuk Google Cloud Run.
+#
+# Cloud Run menjalankan kontainer dan mengirim variabel PORT. Aplikasi wajib
+# mendengarkan pada porta itu, bukan porta tetap.
 FROM python:3.11-slim
 
 # ffmpeg diperlukan untuk mentranskode lagu menjadi MP3 mono 24 kHz.
@@ -15,20 +18,29 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Model embedding dan pemeringkat ulang diunduh saat citra dibangun supaya
-# permintaan pertama tidak menunggu unduhan model.
+# Model diunduh saat citra dibangun, bukan saat instance menyala.
+#
+# Ini penting untuk Cloud Run: instance baru dibuat setiap kali layanan bangun
+# dari nol, dan mengunduh model pada saat itu membuat permintaan pertama gagal
+# karena kehabisan waktu.
+ENV HF_HOME=/app/.cache/huggingface \
+    TRANSFORMERS_OFFLINE=0 \
+    PYTHONUNBUFFERED=1
 RUN python -c "\
 from sentence_transformers import SentenceTransformer, CrossEncoder; \
 SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'); \
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2'); \
 print('model siap')"
 
-ENV PORT=8000
-EXPOSE 8000
+# Sistem berkas Cloud Run bersifat sementara dan berada di memori, jadi
+# direktori kerja diarahkan ke /tmp dan ukurannya dibatasi.
+ENV MUSIC_CACHE_DIR=/tmp/music_cache \
+    VECTOR_DIR=/tmp/vectorstore \
+    MUSIC_CACHE_MAX_MB=120 \
+    PORT=8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-    CMD curl -fsS http://localhost:${PORT}/health || exit 1
+EXPOSE 8080
 
 # Satu pekerja saja: model embedding dan pemeringkat ulang memakai banyak
-# memori, dan beban perangkat boneka memang ringan.
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+# memori, dan beban dari satu boneka memang ringan.
+CMD ["sh", "-c", "exec uvicorn app:app --host 0.0.0.0 --port ${PORT} --workers 1 --timeout-keep-alive 75"]

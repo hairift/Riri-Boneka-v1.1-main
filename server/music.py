@@ -56,6 +56,48 @@ def _gembok(kunci: str) -> threading.Lock:
         return _gembok_lagu[kunci]
 
 
+# Batas ukuran singgahan lagu, dalam megabita.
+#
+# Pada Cloud Run sistem berkas sementara berada di dalam memori, sehingga
+# berkas lagu yang menumpuk memakan RAM instance sampai habis lalu prosesnya
+# dimatikan. Batas ini membuang berkas terlama begitu ambangnya terlampaui.
+BATAS_CACHE_MB = int(os.environ.get("MUSIC_CACHE_MAX_MB", "120"))
+
+
+def rapikan_cache() -> None:
+    """Buang berkas lagu terlama bila singgahan melebihi batas."""
+    try:
+        if not os.path.isdir(DIREKTORI_CACHE):
+            return
+        berkas = []
+        total = 0
+        for nama in os.listdir(DIREKTORI_CACHE):
+            jalur = os.path.join(DIREKTORI_CACHE, nama)
+            if not os.path.isfile(jalur):
+                continue
+            ukuran = os.path.getsize(jalur)
+            berkas.append((os.path.getmtime(jalur), jalur, ukuran))
+            total += ukuran
+
+        batas = BATAS_CACHE_MB * 1024 * 1024
+        if total <= batas:
+            return
+
+        # Yang paling lama tidak diakses dibuang lebih dulu.
+        berkas.sort()
+        for _, jalur, ukuran in berkas:
+            if total <= batas:
+                break
+            try:
+                os.remove(jalur)
+                total -= ukuran
+                log.info("Singgahan lagu dirapikan, membuang %s", os.path.basename(jalur))
+            except OSError:
+                pass
+    except Exception as exc:
+        log.warning("Gagal merapikan singgahan lagu: %s", exc)
+
+
 def perkakas_tersedia() -> tuple[bool, str]:
     hilang = [t for t in ("yt-dlp", "ffmpeg") if shutil.which(t) is None]
     if hilang:
@@ -150,6 +192,7 @@ def transkode(meta: dict[str, Any]) -> Optional[str]:
 
         os.replace(dihasilkan, tujuan)
         log.info("Lagu siap: %s (%.1f MB)", nama_berkas, os.path.getsize(tujuan) / 1048576.0)
+        rapikan_cache()
         return nama_berkas
 
 

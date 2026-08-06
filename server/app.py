@@ -92,7 +92,7 @@ def periksa_kunci(mac: Optional[str], chip: Optional[str],
 def basis_url(request: Request) -> str:
     """Alamat publik server, mengikuti header proxy bila ada.
 
-    Render.com menaruh layanan di belakang proxy, jadi skema dan host harus
+    Cloud Run menaruh layanan di belakang proxy, jadi skema dan host harus
     dibaca dari header X-Forwarded-* agar tautan audio dapat diakses perangkat.
     """
     skema = request.headers.get("x-forwarded-proto") or request.url.scheme
