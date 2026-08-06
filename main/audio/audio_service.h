@@ -127,6 +127,17 @@ public:
     bool IsWakeWordRunning() const { return xEventGroupGetBits(event_group_) & AS_EVENT_WAKE_WORD_RUNNING; }
     bool IsAudioProcessorRunning() const { return xEventGroupGetBits(event_group_) & AS_EVENT_AUDIO_PROCESSOR_RUNNING; }
     bool IsAfeWakeWord();
+    bool IsEchoCancellationActive();
+
+    // Tahan keluaran audio tetap menyala selama percakapan berlangsung.
+    //
+    // Penghematan daya mematikan kanal I2S setelah lima belas detik hening.
+    // Selama percakapan hal itu merugikan: jeda menunggu jawaban server dengan
+    // mudah melewati lima belas detik, lalu kanal dinyalakan lagi tepat sebelum
+    // Riri bicara. Menyalakan kanal I2S menimbulkan bunyi tik pada MAX98357
+    // yang tidak punya peredam bisu, dan cuplikan pertama sesudahnya kerap
+    // terdengar tersendat.
+    void SetOutputKeepAlive(bool keep_alive);
 
     void EnableWakeWordDetection(bool enable);
     void EnableVoiceProcessing(bool enable);
@@ -205,6 +216,7 @@ private:
     bool decode_in_flight_ = false;
     bool output_in_flight_ = false;
     bool playback_drained_notified_ = true;
+    std::atomic<bool> output_keep_alive_{false};
     uint32_t playback_generation_ = 0;
     // For server AEC
     std::deque<uint32_t> timestamp_queue_;

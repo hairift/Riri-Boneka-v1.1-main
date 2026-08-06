@@ -36,6 +36,11 @@ public:
     bool IsWakeWordDetectionEnabled() const override;
     bool IsVoiceProcessingEnabled() const override;
     bool IsAfeWakeWord() const override { return HasWakeWord(); }
+    bool IsEchoCancellationActive() const override {
+        // Kanal rujukan pemutaran wajib ada. Tanpa itu AFE tidak menyusun tahap
+        // AEC sama sekali, seperti terlihat pada log pipelinenya.
+        return device_aec_enabled_.load() && codec_ != nullptr && codec_->input_reference();
+    }
     size_t GetFeedSize() const override;
 
     void OnWakeWordDetected(std::function<void(const std::string& wake_word)> callback) override;

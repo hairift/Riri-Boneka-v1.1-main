@@ -917,7 +917,8 @@ void AudioService::CheckAndUpdateAudioPowerState() {
         // input task instead of closing the codec from the esp_timer task.
         xEventGroupSetBits(event_group_, AS_EVENT_AUDIO_INPUT_STOP_REQUEST);
     }
-    if (output_elapsed > AUDIO_POWER_TIMEOUT_MS && codec_->output_enabled()) {
+    if (output_elapsed > AUDIO_POWER_TIMEOUT_MS && codec_->output_enabled()
+        && !output_keep_alive_.load()) {
         // Keep TX clock when duplex RX is active; otherwise RX may stall on some boards.
         if (!(codec_->duplex() && codec_->input_enabled())) {
             codec_->EnableOutput(false);
@@ -938,6 +939,14 @@ void AudioService::SetModelsList(srmodel_list_t* models_list) {
 
 bool AudioService::IsAfeWakeWord() {
     return audio_engine_initialized_ && audio_engine_->IsAfeWakeWord();
+}
+
+bool AudioService::IsEchoCancellationActive() {
+    return audio_engine_initialized_ && audio_engine_->IsEchoCancellationActive();
+}
+
+void AudioService::SetOutputKeepAlive(bool keep_alive) {
+    output_keep_alive_.store(keep_alive);
 }
 
 bool AudioService::InitializeAudioEngine() {

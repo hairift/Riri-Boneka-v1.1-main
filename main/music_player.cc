@@ -61,8 +61,18 @@ constexpr size_t kId3HeaderBytes = 10;
 // Satu bingkai MP3 stereo 16 bit paling besar 1152 sampel per kanal.
 constexpr size_t kMaxPcmBufferBytes = 64 * 1024;
 
-constexpr int kSearchTimeoutMs = 6000;
-constexpr int kStreamTimeoutMs = 8000;
+// Batas waktu permintaan lagu ke server.
+//
+// Angka ini bukan lama server menjawab, melainkan lama terburuk yang masuk
+// akal. Server yang sudah panas menjawab dalam sepersepuluh detik untuk lagu
+// yang pernah diminta, dan sekitar tujuh belas detik untuk lagu baru yang harus
+// diunduh dan ditranskode lebih dahulu. Batas enam detik sebelumnya membuat
+// setiap lagu baru selalu gagal, dan pengguna mendengar "lagunya tidak
+// ditemukan" padahal server sedang menyiapkannya dengan baik.
+constexpr int kSearchTimeoutMs = 40000;
+// Batas waktu aliran audio. Perlu lebih longgar daripada sebelumnya karena
+// jeda sesaat pada Wi-Fi rumah tidak boleh langsung memutus lagu.
+constexpr int kStreamTimeoutMs = 20000;
 constexpr int kMaxRedirects = 4;
 
 constexpr int kIdleWaitMs = 30000;       // tunggu AI selesai bicara sebelum musik mulai
@@ -76,7 +86,11 @@ constexpr size_t kMusicServerResponseBytes = 8 * 1024;
 
 // Seluruh pencarian harus selesai jauh sebelum server MCP menyerah menunggu,
 // kalau tidak AI akan menjawab "ada kendala teknis" walau lagunya ada.
-constexpr int64_t kResolveBudgetUs = 10LL * 1000LL * 1000LL;
+//
+// Anggarannya harus melebihi kSearchTimeoutMs, kalau tidak anggaran inilah yang
+// memutus permintaan lebih dulu dan batas waktu yang lebih longgar itu tidak
+// pernah terpakai.
+constexpr int64_t kResolveBudgetUs = 50LL * 1000LL * 1000LL;
 
 constexpr EventBits_t kNetworkTaskDone = (1 << 0);
 constexpr EventBits_t kDecoderTaskDone = (1 << 1);

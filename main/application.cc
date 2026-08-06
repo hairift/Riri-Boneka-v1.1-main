@@ -1,5 +1,6 @@
 #include "application.h"
 #include "music_player.h"  // Tambahan Riri Boneka
+#include "web_search.h"    // Tambahan Riri Boneka: pemanasan server
 #include "assets.h"
 #include "assets/lang_config.h"
 #include "audio_codec.h"
@@ -295,6 +296,9 @@ void Application::Run() {
 
 void Application::HandleNetworkConnectedEvent() {
     ESP_LOGI(TAG, "Network connected");
+    // Bangunkan server Riri sekarang juga supaya ia sudah siap saat pengguna
+    // bertanya, bukan baru mulai dibangunkan ketika ditanya.
+    RiriServerWarmUp();
     auto state = GetDeviceState();
 
     if (state == kDeviceStateStarting || state == kDeviceStateWifiConfiguring) {
@@ -1020,6 +1024,14 @@ void Application::HandleStateChangedEvent() {
     auto led = board.GetLed();
     led->OnStateChanged();
 
+    // Selama percakapan berlangsung, keluaran audio ditahan tetap menyala.
+    // Menyalakan ulang kanal I2S berbunyi tik dan membuat cuplikan pertama
+    // tersendat, dan itu terjadi setiap kali menunggu jawaban server melewati
+    // batas hening lima belas detik.
+    audio_service_.SetOutputKeepAlive(new_state != kDeviceStateIdle &&
+                                      new_state != kDeviceStateUnknown &&
+                                      new_state != kDeviceStateWifiConfiguring);
+
     switch (new_state) {
         case kDeviceStateUnknown:
         case kDeviceStateIdle:
@@ -1058,8 +1070,21 @@ void Application::HandleStateChangedEvent() {
 
             if (listening_mode_ != kListeningModeRealtime) {
                 audio_service_.EnableVoiceProcessing(false);
-                // Only AFE wake word can be detected in speaking mode
-                audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
+                // Only AFE wake word can be detected in speaking mode, dan hanya
+                // bila peredam gema benar-benar berjalan.
+                //
+                // Tanpa peredam gema, mikrofon mendengar pengeras suara boneka
+                // sendiri dan ucapan Riri sering dikenali sebagai kata pemicu.
+                // Akibatnya Riri memotong kalimatnya sendiri di tengah jalan,
+                // membunyikan nada balasan, lalu berpindah ke mode mendengarkan
+                // padahal tidak ada yang memanggilnya.
+                //
+                // Menaikkan ambang deteksi bukan jalan keluarnya: pada
+                // pengukuran, kata pemicu palsu bernilai 0,137 sampai 0,195
+                // sedangkan yang asli bernilai 0,138, jadi keduanya memang tidak
+                // dapat dipisahkan oleh ambang mana pun.
+                audio_service_.EnableWakeWordDetection(
+                    audio_service_.IsAfeWakeWord() && audio_service_.IsEchoCancellationActive());
             }
             audio_service_.ResetDecoder();
             break;

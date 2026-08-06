@@ -2,8 +2,12 @@
 #include <esp_log.h>
 #include <esp_timer.h>
 #include <cJSON.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <cstring>
 #include <cstdio>
+#include <atomic>
+#include <memory>
 #include <string>
 #include <algorithm>
 #include <cctype>
@@ -691,6 +695,38 @@ static void search_wikipedia_titles(const char* host,
 // Meminta hasil pencarian ke server Riri. Mengembalikan false bila server tidak
 // diaktifkan, tidak menjawab, atau jawabannya kosong, sehingga pemanggil dapat
 // melanjutkan ke penelusuran Wikipedia lokal.
+void RiriServerWarmUp() {
+    std::string base_url = CONFIG_RIRI_SERVER_URL;
+    while (!base_url.empty() && base_url.back() == '/') {
+        base_url.pop_back();
+    }
+    if (base_url.empty()) {
+        return;
+    }
+
+    static std::atomic<bool> sedang_memanaskan{false};
+    bool diharapkan = false;
+    if (!sedang_memanaskan.compare_exchange_strong(diharapkan, true)) {
+        return;
+    }
+
+    auto* alamat = new std::string(base_url + "/health");
+    // Dijalankan di tugas tersendiri supaya jalur boot tidak ikut menunggu.
+    // Prioritas 1 menjaganya tetap di bawah jalur audio waktu nyata.
+    if (xTaskCreate([](void* arg) {
+            std::unique_ptr<std::string> url(static_cast<std::string*>(arg));
+            std::string balasan = HttpGet(url->c_str(), 60000);
+            ESP_LOGI(TAG, "Pemanasan server Riri %s",
+                     balasan.empty() ? "gagal, permintaan pertama akan lebih lambat" : "selesai");
+            sedang_memanaskan.store(false);
+            vTaskDelete(nullptr);
+        }, "riri_warm", 6144, alamat, 1, nullptr) != pdPASS) {
+        delete alamat;
+        sedang_memanaskan.store(false);
+        ESP_LOGW(TAG, "Tugas pemanasan server Riri tidak dapat dibuat");
+    }
+}
+
 static bool SearchViaRiriServer(const char* query, char* buf, int buf_size) {
     if (!CONFIG_RIRI_WEB_SEARCH_SERVER) {
         return false;
@@ -707,7 +743,12 @@ static bool SearchViaRiriServer(const char* query, char* buf, int buf_size) {
     url_encode(query, encoded, sizeof(encoded));
     std::string url = base_url + "/search?q=" + encoded + "&region=id-id";
 
-    std::string body = HttpGet(url.c_str(), 6000);
+    // Batas waktunya harus melebihi waktu bangun Cloud Run, bukan sekadar waktu
+    // jawab server yang sudah panas. Server yang panas menjawab di bawah satu
+    // detik, tetapi instance yang baru dibangunkan perlu memuat dua model
+    // pembelajaran mesin lebih dahulu. Dengan batas enam detik sebelumnya,
+    // pertanyaan berita selalu gagal padahal servernya sehat.
+    std::string body = HttpGet(url.c_str(), 25000);
     if (body.empty()) {
         ESP_LOGW(TAG, "Server pencarian Riri tidak menjawab");
         return false;

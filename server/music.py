@@ -17,10 +17,12 @@ import glob
 import hashlib
 import logging
 import os
+import random
 import re
 import shutil
 import subprocess
 import threading
+import time
 import unicodedata
 from typing import Any, Optional
 
@@ -74,10 +76,27 @@ KLIEN_YOUTUBE = ("android_vr", "", "tv", "web_safari")
 # Tanpa ini, hasil teratas SoundCloud untuk "Dusk Till Dawn" adalah unggahan
 # "One Hour Version" sepanjang 3.649 detik, dan boneka akan memutar mix satu jam
 # alih-alih lagunya. Batas bawah menyingkirkan potongan pendek dan cuplikan.
-SARINGAN_DURASI = "duration>60 & duration<600"
-# Jumlah hasil yang diperiksa sebelum menyerah. Perlu lebih dari satu justru
-# karena hasil teratas sering kali yang tersaring.
-JUMLAH_HASIL_CARI = 5
+DURASI_MIN_DETIK = 60.0
+DURASI_MAKS_DETIK = 600.0
+SARINGAN_DURASI = "duration>%d & duration<%d" % (DURASI_MIN_DETIK, DURASI_MAKS_DETIK)
+# Jumlah hasil yang diperiksa sebelum menyerah.
+#
+# Dua puluh, bukan lima. Hasil teratas SoundCloud untuk penyanyi terkenal
+# biasanya unggahan resmi label yang hanya berupa cuplikan tiga puluh detik, dan
+# unggahan utuh baru muncul di urutan belasan. Dengan lima hasil, permintaan
+# "putar lagu Bruno Mars" tidak menemukan apa pun.
+JUMLAH_HASIL_CARI = 20
+
+# Batas waktu seluruh penyiapan lagu, dari pencarian sampai berkas siap.
+#
+# Firmware menunggu jawaban ini sambil AI terdiam, jadi angkanya harus sedikit
+# di bawah batas waktu firmware. Lagu yang pernah diminta dijawab seketika dari
+# singgahan, jadi batas ini hanya terasa pada lagu yang benar-benar baru.
+BATAS_SIAPKAN_DETIK = 32.0
+# Banyaknya hasil yang benar-benar diunduh sebelum berpindah ke kueri berikutnya.
+# Bila tiga hasil teratas yang sudah lolos penyaringan pun gagal diunduh,
+# kuerinya yang bermasalah, bukan hasilnya.
+BATAS_KANDIDAT_PER_KUERI = 3
 
 
 def _slug(nilai: str) -> str:
@@ -195,50 +214,170 @@ def cari_youtube(judul: str, penyanyi: str) -> Optional[dict[str, Any]]:
     return hasil
 
 
-def cari_soundcloud(judul: str, penyanyi: str) -> Optional[dict[str, Any]]:
-    """Cari lagu di SoundCloud, dipakai saat YouTube tidak dapat dihubungi.
+def cari_soundcloud(kata: str, jumlah: int = JUMLAH_HASIL_CARI) -> list[dict[str, Any]]:
+    """Cari beberapa lagu sekaligus di SoundCloud.
+
+    Mengembalikan daftar, bukan satu hasil, karena hasil teratas belum tentu
+    dapat diunduh dan karena permintaan yang hanya menyebut nama penyanyi perlu
+    beberapa pilihan untuk diacak.
 
     Tidak memerlukan kunci API maupun akun, sehingga tetap bekerja ketika kuota
     YouTube Data API habis.
     """
-    kata = " ".join(x for x in (penyanyi.strip(), judul.strip()) if x)
+    kata = kata.strip()
     if not kata:
-        return None
+        return []
 
-    kunci = "riri:sc:" + hashlib.sha256(kata.lower().encode()).hexdigest()[:24]
+    kunci = "riri:sc:%d:%s" % (jumlah, hashlib.sha256(kata.lower().encode()).hexdigest()[:24])
     tersimpan = cache.ambil(kunci)
     if tersimpan is not None:
         return tersimpan
 
     try:
         jalan = subprocess.run(
-            ["yt-dlp", "scsearch%d:%s" % (JUMLAH_HASIL_CARI, kata),
-             "--no-warnings", "--skip-download",
-             "--match-filter", SARINGAN_DURASI,
-             "--print", "%(id)s\t%(title)s\t%(uploader)s"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=False,
+            # --flat-playlist membaca daftar hasil apa adanya dari SoundCloud
+            # tanpa membuka satu per satu. Untuk dua puluh hasil, bedanya tiga
+            # detik melawan dua puluh lima detik, dan seluruh keterangan yang
+            # dibutuhkan sudah ada di daftar itu.
+            ["yt-dlp", "scsearch%d:%s" % (jumlah, kata),
+             "--no-warnings", "--skip-download", "--flat-playlist",
+             "--print", "%(id)s\t%(duration)s\t%(title)s\t%(uploader)s\t%(url)s"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90, check=False,
         )
     except subprocess.TimeoutExpired:
-        log.warning("Pencarian SoundCloud kehabisan waktu")
-        return None
+        log.warning("Pencarian SoundCloud kehabisan waktu untuk %r", kata)
+        return []
 
-    baris = (jalan.stdout or b"").decode("utf-8", "replace").strip().split("\n")[0]
-    bagian = baris.split("\t")
-    if jalan.returncode != 0 or len(bagian) < 3:
+    hasil: list[dict[str, Any]] = []
+    for baris in (jalan.stdout or b"").decode("utf-8", "replace").strip().split("\n"):
+        bagian = baris.split("\t")
+        if len(bagian) < 5 or not bagian[4].startswith("http"):
+            continue
+        try:
+            durasi = float(bagian[1])
+        except ValueError:
+            continue
+        # Penyaringan durasi dilakukan di sini, bukan lewat --match-filter,
+        # karena daftar ringkas tidak selalu menyediakan bidang yang dipakai
+        # penyaring bawaan yt-dlp.
+        #
+        # Batas bawahnya penting: lagu resmi label di SoundCloud sering hanya
+        # berupa cuplikan tiga puluh detik. Tanpa penyaring ini, permintaan
+        # "putar lagu Bruno Mars" akan memutar cuplikan, bukan lagunya.
+        if not (DURASI_MIN_DETIK < durasi < DURASI_MAKS_DETIK):
+            continue
+        hasil.append({
+            "id": bagian[0],
+            "title": bagian[2],
+            "artist": bagian[3],
+            # Alamat langsung, supaya pengunduhan tidak perlu mencari ulang.
+            "url": bagian[4],
+            "sumber": "soundcloud",
+        })
+
+    if not hasil:
         galat = (jalan.stderr or b"").decode("utf-8", "replace").strip()
-        log.warning("Pencarian SoundCloud gagal: %s", galat[-300:] or "tanpa hasil")
-        return None
+        log.info("SoundCloud tidak punya hasil utuh untuk %r: %s", kata, galat[-200:] or "kosong")
 
-    hasil = {
-        "id": bagian[0],
-        "title": bagian[1],
-        "artist": bagian[2],
-        # Tanpa alamat YouTube, _daftar_percobaan langsung memakai SoundCloud.
-        "url": "",
-        "kueri": kata,
-    }
     cache.simpan(kunci, hasil, pengaturan().cache_ttl_music)
     return hasil
+
+
+def _token(teks: str) -> set[str]:
+    return {t for t in re.findall(r"[0-9a-z぀-ヿ一-鿿가-힯]+",
+                                  teks.lower()) if len(t) > 2}
+
+
+def _nyambung(pilihan: dict[str, Any], kata: str, termasuk_pengunggah: bool) -> bool:
+    """Periksa apakah hasil pencarian benar-benar berhubungan dengan kueri.
+
+    SoundCloud selalu mengembalikan sesuatu, bahkan ketika tidak ada yang cocok.
+    Untuk "Yorushika Saitu" ia pernah menawarkan lagu Vietnam, dan untuk
+    "Yurusik" sebuah lagu Rusia. Memutar itu jauh lebih buruk daripada mencoba
+    kueri yang lebih longgar, karena penggunanya mendengar lagu yang sama sekali
+    bukan yang diminta dan tidak tahu kenapa.
+
+    Cukup satu kata yang sama, sebab judul asing kerap ditulis campur aduk:
+    "ヨルシカ -「言って。」/ Yorushika" memuat nama penyanyi dalam dua tulisan
+    sekaligus.
+
+    Nama pengunggah hanya ikut dinilai untuk kueri yang memang berupa nama
+    penyanyi. Untuk kueri judul, nama pengunggah justru menyesatkan: judul
+    "Saitu" pernah lolos lewat sebuah lagu tak berhubungan hanya karena nama
+    pengunggahnya kebetulan mengandung kata itu.
+    """
+    dicari = _token(kata)
+    if not dicari:
+        return True
+    teks = pilihan["title"]
+    if termasuk_pengunggah:
+        teks += " " + pilihan["artist"]
+    return bool(dicari & _token(teks))
+
+
+def _kandidat_kueri(judul: str, penyanyi: str) -> list[tuple[str, bool]]:
+    """Susun kueri dari yang paling tepat ke yang paling longgar.
+
+    Nilai kedua menandakan hasilnya boleh diacak. Itu berlaku untuk permintaan
+    yang memang tidak menyebut lagu tertentu, misalnya "putar lagu Bruno Mars"
+    atau "putar lagu dj Thailand": pengguna ingin lagu apa saja yang cocok, dan
+    mengacak membuat permintaan yang sama tidak selalu memutar lagu yang itu-itu
+    juga.
+
+    Urutan longgar ini juga yang membuat judul asing tetap ketemu. Alih bahasa
+    suara sering salah dengar judul berhuruf bukan Latin: "Yorushika" pernah
+    terdengar sebagai "Saitu", "Sikap", dan "Yurusik". Ketika kueri lengkapnya
+    gagal, pencarian dengan nama penyanyi saja tetap menemukan lagu penyanyi
+    tersebut, sehingga permintaannya tidak berakhir dengan "lagunya tidak ada"
+    padahal di SoundCloud lagunya jelas ada.
+    """
+    judul = judul.strip()
+    penyanyi = penyanyi.strip()
+
+    kandidat: list[tuple[str, bool]] = []
+
+    def tambah(kata: str, acak: bool) -> None:
+        kata = " ".join(kata.split())
+        # Kueri yang sama boleh muncul dua kali bila cara memilihnya berbeda:
+        # percobaan pertama mengambil hasil teratas, percobaan berikutnya
+        # mengacak sisanya.
+        if kata and (kata.lower(), acak) not in {(k.lower(), a) for k, a in kandidat}:
+            kandidat.append((kata, acak))
+
+    if judul and penyanyi:
+        tambah("%s %s" % (penyanyi, judul), False)
+        tambah(judul, False)
+        # Judul yang salah dengar dibuang seluruhnya, sisakan penyanyinya.
+        tambah(penyanyi, True)
+    elif penyanyi:
+        tambah(penyanyi, True)
+    elif judul:
+        tambah(judul, False)
+        # Satu kata tunggal biasanya justru nama penyanyi, bukan judul lagu,
+        # karena AI menaruh apa pun yang tidak dikenalinya ke bidang judul.
+        tambah(judul, True)
+
+    return kandidat
+
+
+# Ditandai benar setelah YouTube menolak alamat server ini sekali.
+_youtube_diblokir = False
+
+
+def _catat_youtube_diblokir(galat: str) -> None:
+    """Ingat bahwa YouTube menolak alamat server ini.
+
+    Pemeriksaan bot berlaku untuk seluruh alamat, bukan per lagu, jadi setelah
+    sekali ditolak percobaan berikutnya pasti ditolak juga. Mencobanya lagi
+    hanya membuang tujuh detik pada setiap permintaan lagu, dan tujuh detik itu
+    langsung terasa sebagai boneka yang diam menunggu.
+    """
+    global _youtube_diblokir
+    if _youtube_diblokir:
+        return
+    if "not a bot" in galat or "Sign in to confirm" in galat:
+        _youtube_diblokir = True
+        log.warning("YouTube menolak alamat server ini, sumber lagu beralih ke SoundCloud")
 
 
 def _daftar_percobaan(meta: dict[str, Any]) -> list[tuple[str, str, list[str]]]:
@@ -247,29 +386,50 @@ def _daftar_percobaan(meta: dict[str, Any]) -> list[tuple[str, str, list[str]]]:
     Setiap butir berisi nama untuk log, alamat atau kueri untuk yt-dlp, dan
     tambahan argumen.
     """
-    percobaan: list[tuple[str, str, list[str]]] = []
-    if meta.get("url"):
-        for klien in KLIEN_YOUTUBE:
-            # Saringan durasi juga dipasang di sini karena hasil teratas
-            # YouTube pun kadang berupa unggahan versi satu jam.
-            tambahan = ["--match-filter", SARINGAN_DURASI]
-            if klien:
-                tambahan += ["--extractor-args", "youtube:player_client=" + klien]
-            percobaan.append(("youtube/" + (klien or "bawaan"), meta["url"], tambahan))
+    alamat = meta.get("url") or ""
+    if not alamat:
+        return []
 
-    kueri = (meta.get("kueri") or "").strip()
-    if kueri:
-        percobaan.append((
-            "soundcloud",
-            "scsearch%d:%s" % (JUMLAH_HASIL_CARI, kueri),
-            ["--match-filter", SARINGAN_DURASI, "--max-downloads", "1"],
-        ))
+    if meta.get("sumber") == "soundcloud":
+        # Alamat SoundCloud langsung, tidak perlu mencari ulang.
+        return [("soundcloud", alamat, ["--match-filter", SARINGAN_DURASI])]
+
+    if _youtube_diblokir:
+        return []
+
+    percobaan: list[tuple[str, str, list[str]]] = []
+    for klien in KLIEN_YOUTUBE:
+        # Saringan durasi juga dipasang di sini karena hasil teratas YouTube pun
+        # kadang berupa unggahan versi satu jam.
+        tambahan = ["--match-filter", SARINGAN_DURASI]
+        if klien:
+            tambahan += ["--extractor-args", "youtube:player_client=" + klien]
+        percobaan.append(("youtube/" + (klien or "bawaan"), alamat, tambahan))
     return percobaan
 
 
-def _unduh(percobaan: list[tuple[str, str, list[str]]], sementara: str) -> bool:
+def _bersihkan(sementara: str) -> None:
+    """Buang berkas separuh jadi dari percobaan yang gagal.
+
+    Wajib, karena berkas sisa akan dikira hasil percobaan berikutnya dan lagu
+    yang salah atau terpotong akhirnya ikut terkirim ke boneka.
+    """
+    for sisa in glob.glob(sementara + ".*"):
+        try:
+            os.remove(sisa)
+        except OSError:
+            pass
+
+
+def _unduh(percobaan: list[tuple[str, str, list[str]]], sementara: str,
+           batas_detik: float) -> bool:
     """Coba setiap sumber berurutan sampai ada yang menghasilkan berkas MP3."""
+    tenggat = time.monotonic() + batas_detik
     for nama, alamat, tambahan in percobaan:
+        sisa = tenggat - time.monotonic()
+        if sisa <= 1.0:
+            log.warning("Unduhan lagu dihentikan, waktunya habis sebelum %s", nama)
+            break
         perintah = [
             "yt-dlp", alamat,
             "--no-playlist", "--no-warnings",
@@ -285,10 +445,11 @@ def _unduh(percobaan: list[tuple[str, str, list[str]]], sementara: str) -> bool:
             # penyebabnya mustahil ditebak.
             jalan = subprocess.run(
                 perintah, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                timeout=600, check=False,
+                timeout=sisa, check=False,
             )
         except subprocess.TimeoutExpired:
             log.warning("Unduhan lagu kehabisan waktu lewat %s", nama)
+            _bersihkan(sementara)
             continue
 
         # yt-dlp keluar dengan kode 101 setelah --max-downloads tercapai. Itu
@@ -299,17 +460,13 @@ def _unduh(percobaan: list[tuple[str, str, list[str]]], sementara: str) -> bool:
 
         galat = (jalan.stderr or b"").decode("utf-8", "replace").strip()
         log.warning("Unduhan lagu gagal lewat %s: %s", nama, galat[-400:] or "tanpa keterangan")
-        # Berkas separuh jadi dari percobaan gagal harus dibersihkan supaya
-        # tidak tertukar dengan hasil percobaan berikutnya.
-        for sisa in glob.glob(sementara + ".*"):
-            try:
-                os.remove(sisa)
-            except OSError:
-                pass
+        if nama.startswith("youtube/"):
+            _catat_youtube_diblokir(galat)
+        _bersihkan(sementara)
     return False
 
 
-def transkode(meta: dict[str, Any]) -> Optional[str]:
+def transkode(meta: dict[str, Any], batas_detik: float = BATAS_SIAPKAN_DETIK) -> Optional[str]:
     """Unduh lalu ubah menjadi MP3 mono 24 kHz. Mengembalikan nama berkas."""
     nama_berkas = "%s_%s.mp3" % (_slug(meta["title"]), _slug(meta["id"]))
     tujuan = os.path.join(DIREKTORI_CACHE, nama_berkas)
@@ -323,7 +480,7 @@ def transkode(meta: dict[str, Any]) -> Optional[str]:
         sementara = tujuan + ".part"
         log.info("Mengunduh dan mentranskode: %s", meta["title"])
 
-        if not _unduh(_daftar_percobaan(meta), sementara):
+        if not _unduh(_daftar_percobaan(meta), sementara, batas_detik):
             return None
 
         dihasilkan = sementara + ".mp3"
@@ -337,6 +494,50 @@ def transkode(meta: dict[str, Any]) -> Optional[str]:
         return nama_berkas
 
 
+def _siapkan_sinkron(judul: str, penyanyi: str) -> Optional[tuple[dict[str, Any], str]]:
+    """Cari lalu unduh lagu, makin longgar sampai ada yang berhasil.
+
+    Berhenti pada BATAS_SIAPKAN_DETIK karena firmware menunggu jawaban ini
+    sambil AI terdiam. Lebih baik menyerah dan berterus terang daripada membuat
+    boneka membisu lama, dan pengguna dapat meminta ulang.
+    """
+    tenggat = time.monotonic() + BATAS_SIAPKAN_DETIK
+    dicoba: set[str] = set()
+
+    for urutan, (kata, boleh_acak) in enumerate(_kandidat_kueri(judul, penyanyi)):
+        if time.monotonic() > tenggat:
+            log.warning("Penyiapan lagu dihentikan karena kehabisan waktu")
+            break
+
+        # YouTube hanya dipakai pada kueri paling tepat. Untuk kueri longgar,
+        # SoundCloud memberi daftar yang jauh lebih mudah dicoba satu per satu.
+        if urutan == 0 and not _youtube_diblokir:
+            meta = cari_youtube(judul, penyanyi)
+            if meta is not None:
+                berkas = transkode(meta)
+                if berkas is not None:
+                    return meta, berkas
+
+        kandidat = [p for p in cari_soundcloud(kata) if _nyambung(p, kata, boleh_acak)]
+        if boleh_acak:
+            random.shuffle(kandidat)
+
+        for pilihan in kandidat[:BATAS_KANDIDAT_PER_KUERI]:
+            sisa = tenggat - time.monotonic()
+            if sisa <= 0:
+                break
+            if pilihan["url"] in dicoba:
+                continue
+            dicoba.add(pilihan["url"])
+            berkas = transkode(pilihan, batas_detik=sisa)
+            if berkas is not None:
+                if urutan > 0:
+                    log.info("Lagu ditemukan lewat kueri longgar %r: %s", kata, pilihan["title"])
+                return pilihan, berkas
+
+    return None
+
+
 async def siapkan(judul: str, penyanyi: str, basis_url: str) -> dict[str, Any]:
     """Cari lalu siapkan lagu, kembalikan metadata dan tautan audionya."""
     ok, pesan = perkakas_tersedia()
@@ -344,17 +545,10 @@ async def siapkan(judul: str, penyanyi: str, basis_url: str) -> dict[str, Any]:
         return {"status": "error", "error": pesan}
 
     lup = asyncio.get_running_loop()
-    meta = await lup.run_in_executor(None, cari_youtube, judul, penyanyi)
-    if meta is None:
-        # Kuota YouTube Data API habis atau kuncinya kosong. SoundCloud tidak
-        # memerlukan kunci, jadi pencarian tetap dapat dilanjutkan.
-        meta = await lup.run_in_executor(None, cari_soundcloud, judul, penyanyi)
-    if meta is None:
+    hasil = await lup.run_in_executor(None, _siapkan_sinkron, judul, penyanyi)
+    if hasil is None:
         return {"status": "not_found", "error": "lagu tidak ditemukan"}
-
-    nama_berkas = await lup.run_in_executor(None, transkode, meta)
-    if nama_berkas is None:
-        return {"status": "error", "error": "gagal menyiapkan berkas audio"}
+    meta, nama_berkas = hasil
 
     return {
         "status": "found",

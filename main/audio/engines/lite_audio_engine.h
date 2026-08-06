@@ -28,6 +28,7 @@ public:
     bool IsWakeWordDetectionEnabled() const override;
     bool IsVoiceProcessingEnabled() const override;
     bool IsAfeWakeWord() const override { return false; }
+    bool IsEchoCancellationActive() const override { return false; }
     size_t GetFeedSize() const override;
 
     void OnWakeWordDetected(std::function<void(const std::string& wake_word)> callback) override;

@@ -26,6 +26,10 @@ public:
     virtual bool IsWakeWordDetectionEnabled() const = 0;
     virtual bool IsVoiceProcessingEnabled() const = 0;
     virtual bool IsAfeWakeWord() const = 0;
+    // Benar hanya bila peredam gema benar-benar berjalan, bukan sekadar
+    // dinyalakan lewat pengaturan. Papan tanpa kanal rujukan pemutaran tidak
+    // dapat meredam gema sama sekali, dan pemanggilnya perlu tahu itu.
+    virtual bool IsEchoCancellationActive() const = 0;
     virtual size_t GetFeedSize() const = 0;
 
     virtual void OnWakeWordDetected(std::function<void(const std::string& wake_word)> callback) = 0;
