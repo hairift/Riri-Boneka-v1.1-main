@@ -17,8 +17,11 @@ python-docx==1.1.2
 beautifulsoup4==4.12.3
 lxml==5.3.0
 
-# Pencarian web
-duckduckgo-search==7.2.1
+# Pencarian web.
+# Paket duckduckgo-search sudah digantikan ddgs, dan kelas AsyncDDGS tidak lagi
+# tersedia sejak versi 7. Pemanggilannya dijalankan di kolam utas oleh
+# websearch.py supaya tetap tidak menahan loop kejadian.
+ddgs==9.14.4
 
 # Singgahan dan memori percakapan
 redis==5.2.1

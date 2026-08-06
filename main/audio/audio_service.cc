@@ -1,6 +1,7 @@
 #include "audio_service.h"
 #include <esp_log.h>
 #include <cstring>
+#include <cstdint>  // Tambahan Riri Boneka: INT16_MAX
 
 #define RATE_CVT_CFG(_src_rate, _dest_rate, _channel)        \
     (esp_ae_rate_cvt_cfg_t)                                  \
@@ -29,6 +30,56 @@
 #endif
 
 #define TAG "AudioService"
+
+namespace {
+
+// Tambahan Riri Boneka: normalkan puncak suara lokal.
+//
+// Berkas .ogg bawaan direkam dengan tingkat yang rendah. Menaikkan volume
+// keluaran codec saja tidak cukup karena yang dinaikkan adalah seluruh jalur,
+// termasuk desis. Menormalkan puncak tiap potongan membuat suara terdengar
+// jauh lebih keras tanpa menambah desis.
+//
+// Penguatan dibatasi agar rekaman yang memang sudah keras tidak dipotong.
+void BoostLocalPromptPcm(std::vector<int16_t>& pcm) {
+    int peak = 0;
+    for (int16_t sample : pcm) {
+        const int value = sample < 0 ? -sample : sample;
+        if (value > peak) {
+            peak = value;
+        }
+    }
+    if (peak <= 0) {
+        return;
+    }
+
+    // Sasaran 97 persen dari batas atas. Menyisakan sedikit ruang mencegah
+    // gelombang terpotong keras yang terdengar sebagai gemeretak.
+    constexpr float kTargetPeak = 0.97f * INT16_MAX;
+    // Batas penguatan menjaga bagian sunyi tidak ikut terangkat menjadi desis.
+    constexpr float kMaxGain = 8.0f;
+
+    float gain = kTargetPeak / static_cast<float>(peak);
+    if (gain <= 1.02f) {
+        return;  // sudah cukup keras
+    }
+    if (gain > kMaxGain) {
+        gain = kMaxGain;
+    }
+
+    for (int16_t& sample : pcm) {
+        const int32_t value = static_cast<int32_t>(sample * gain);
+        if (value > INT16_MAX) {
+            sample = INT16_MAX;
+        } else if (value < -INT16_MAX) {
+            sample = -INT16_MAX;
+        } else {
+            sample = static_cast<int16_t>(value);
+        }
+    }
+}
+
+}  // namespace
 
 AudioService::AudioService() {
     event_group_ = xEventGroupCreate();
@@ -418,6 +469,10 @@ void AudioService::OpusCodecTask() {
                         resampled.resize(actual_output);
                         task->pcm = std::move(resampled);
                     }
+                    // Tambahan Riri Boneka: kuatkan hanya suara lokal.
+                    if (packet->boost_volume) {
+                        BoostLocalPromptPcm(task->pcm);
+                    }
                     decoded = true;
                 } else {
                     ESP_LOGE(TAG, "Failed to decode audio after resize, error code: %d", ret);
@@ -724,6 +779,8 @@ void AudioService::PlaySound(const std::string_view& ogg) {
         auto packet = std::make_unique<AudioStreamPacket>();
         packet->sample_rate = sample_rate;
         packet->frame_duration = 60;
+        // Tambahan Riri Boneka: seluruh berkas .ogg bawaan dikuatkan.
+        packet->boost_volume = true;
         packet->payload.resize(size);
         std::memcpy(packet->payload.data(), data, size);
         PushPacketToDecodeQueue(std::move(packet), true);

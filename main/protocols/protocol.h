@@ -12,6 +12,10 @@ struct AudioStreamPacket {
     int frame_duration = 0;
     uint32_t timestamp = 0;
     std::vector<uint8_t> payload;
+    // Tambahan Riri Boneka: suara lokal seperti sapaan dan reaksi sentuh
+    // direkam dengan tingkat rendah, jadi puncaknya dinormalkan sebelum
+    // dikirim ke pengeras suara. Audio percakapan dari server tidak diubah.
+    bool boost_volume = false;
 };
 
 struct BinaryProtocol2 {

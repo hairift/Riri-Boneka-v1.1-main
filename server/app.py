@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
@@ -34,10 +35,33 @@ logging.basicConfig(
 )
 log = logging.getLogger("riri.app")
 
+@asynccontextmanager
+async def daur_hidup(_: FastAPI):
+    """Persiapan saat server mulai.
+
+    Memakai lifespan, bukan dekorator on_event yang sudah usang dan dibuang
+    pada FastAPI versi baru.
+    """
+    log.info("Server Riri mulai")
+    ok, pesan = music.perkakas_tersedia()
+    if not ok:
+        log.warning("Fitur musik belum siap: %s", pesan)
+    if not pengaturan().youtube_api_key:
+        log.warning("YOUTUBE_API_KEY belum diisi, pencarian lagu tidak akan berjalan")
+    try:
+        # Indeks dibangun sekali di awal supaya permintaan pertama tidak lambat.
+        rag.INDEKS.bangun()
+    except Exception:
+        log.exception("Pembangunan indeks RAG gagal, server tetap berjalan")
+    yield
+    log.info("Server Riri berhenti")
+
+
 app = FastAPI(
     title="Server Riri Boneka",
     description="RAG data kampus, pencarian web, dan pemutar musik untuk boneka AI Riri.",
     version="1.1.0",
+    lifespan=daur_hidup,
 )
 
 
@@ -157,21 +181,6 @@ async def music_audio(nama_berkas: str):
     # FileResponse sudah mendukung permintaan Range, yang berguna saat menguji
     # berkas langsung dari peramban atau pemutar audio biasa.
     return FileResponse(jalur, media_type="audio/mpeg", filename=aman)
-
-
-@app.on_event("startup")
-async def saat_mulai():
-    log.info("Server Riri mulai")
-    ok, pesan = music.perkakas_tersedia()
-    if not ok:
-        log.warning("Fitur musik belum siap: %s", pesan)
-    if not pengaturan().youtube_api_key:
-        log.warning("YOUTUBE_API_KEY belum diisi, pencarian lagu tidak akan berjalan")
-    try:
-        # Indeks dibangun sekali di awal supaya permintaan pertama tidak lambat.
-        rag.INDEKS.bangun()
-    except Exception:
-        log.exception("Pembangunan indeks RAG gagal, server tetap berjalan")
 
 
 if __name__ == "__main__":

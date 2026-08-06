@@ -28,7 +28,12 @@ from config import pengaturan
 
 log = logging.getLogger("riri.music")
 
-DIREKTORI_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "music_cache")
+# Direktori singgahan lagu. Dapat dialihkan lewat MUSIC_CACHE_DIR karena pada
+# sebagian layanan hosting folder aplikasi bersifat hanya-baca.
+DIREKTORI_CACHE = os.environ.get(
+    "MUSIC_CACHE_DIR",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "music_cache"),
+)
 _gembok_lagu: dict[str, threading.Lock] = {}
 _gembok_peta = threading.Lock()
 

@@ -1,9 +1,13 @@
 """Pencarian web untuk Riri.
 
-Memakai AsyncDDGS supaya permintaan tidak memblokir proses, sehingga suara
-boneka tidak putus-putus saat pencarian berjalan. Hasil disinggahkan sepuluh
-menit agar berita yang sama tidak ditembak berulang kali dan tidak kena batas
-laju DuckDuckGo.
+Pustaka DuckDuckGo tidak lagi menyediakan kelas AsyncDDGS; sejak versi 7 hanya
+tersisa kelas DDGS yang sinkron. Supaya tujuan aslinya tetap tercapai, yaitu
+permintaan pencarian tidak boleh menahan proses sehingga suara boneka putus,
+pemanggilannya dijalankan di kolam utas lewat run_in_executor. Loop kejadian
+FastAPI tetap bebas melayani permintaan lain selama pencarian berjalan.
+
+Hasil disinggahkan sepuluh menit agar berita yang sama tidak ditembak berulang
+kali dan tidak kena batas laju DuckDuckGo.
 
 Jawaban yang dikirim ke perangkat sengaja dipangkas menjadi dua kalimat pertama
 supaya boneka cepat mulai berbicara.
@@ -11,6 +15,7 @@ supaya boneka cepat mulai berbicara.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -61,13 +66,53 @@ def batasi_kalimat(teks: str, maksimum: int) -> str:
     """Ambil beberapa kalimat pertama saja.
 
     Membacakan seluruh isi halaman membuat jawaban suara sangat panjang dan
-    terasa lambat, jadi hanya inti yang dikirim ke perangkat.
+    terasa lambat, jadi hanya intinya yang dikirim ke perangkat.
     """
     teks = re.sub(r"\s+", " ", teks or "").strip()
     if not teks:
         return ""
     kalimat = re.split(r"(?<=[.!?])\s+", teks)
     return " ".join(kalimat[:maksimum]).strip()
+
+
+def _cari_sinkron(kueri: str, region: str, maks: int,
+                  berita: bool, rentang: Optional[str]) -> list[dict[str, str]]:
+    """Panggilan DuckDuckGo yang sebenarnya. Dijalankan di kolam utas."""
+    hasil: list[dict[str, str]] = []
+    try:
+        from ddgs import DDGS
+
+        with DDGS() as ddgs:
+            if berita:
+                # news() khusus berita dan mendukung penyaring rentang waktu.
+                butir = ddgs.news(
+                    kueri, region=region, safesearch="moderate",
+                    timelimit=rentang or "w", max_results=maks,
+                )
+                for b in butir or []:
+                    hasil.append({
+                        "judul": b.get("title", ""),
+                        "isi": b.get("body", ""),
+                        "url": b.get("url", ""),
+                        "sumber": b.get("source", ""),
+                        "tanggal": b.get("date", ""),
+                    })
+            else:
+                butir = ddgs.text(
+                    kueri, region=region, safesearch="moderate",
+                    timelimit=rentang, max_results=maks,
+                )
+                for b in butir or []:
+                    hasil.append({
+                        "judul": b.get("title", ""),
+                        "isi": b.get("body", ""),
+                        "url": b.get("href", ""),
+                        "sumber": "",
+                        "tanggal": "",
+                    })
+    except Exception as exc:
+        log.warning("Pencarian DuckDuckGo gagal: %s", exc)
+    return hasil
 
 
 async def cari(kueri: str, region: str = "id-id", maks: int = 5) -> dict[str, Any]:
@@ -82,40 +127,11 @@ async def cari(kueri: str, region: str = "id-id", maks: int = 5) -> dict[str, An
         log.info("Hasil pencarian diambil dari singgahan: %s", kueri)
         return tersimpan
 
-    hasil: list[dict[str, str]] = []
-    try:
-        from duckduckgo_search import AsyncDDGS
-
-        async with AsyncDDGS() as ddgs:
-            if berita:
-                # news() khusus berita, mendukung penyaring rentang waktu.
-                items = await ddgs.anews(
-                    kueri, region=region, safesearch="moderate",
-                    timelimit=rentang or "w", max_results=maks,
-                )
-                for it in items or []:
-                    hasil.append({
-                        "judul": it.get("title", ""),
-                        "isi": it.get("body", ""),
-                        "url": it.get("url", ""),
-                        "sumber": it.get("source", ""),
-                        "tanggal": it.get("date", ""),
-                    })
-            else:
-                items = await ddgs.atext(
-                    kueri, region=region, safesearch="moderate",
-                    timelimit=rentang, max_results=maks,
-                )
-                for it in items or []:
-                    hasil.append({
-                        "judul": it.get("title", ""),
-                        "isi": it.get("body", ""),
-                        "url": it.get("href", ""),
-                        "sumber": "",
-                        "tanggal": "",
-                    })
-    except Exception as exc:
-        log.warning("Pencarian DuckDuckGo gagal: %s", exc)
+    # Pencarian dijalankan di kolam utas supaya loop kejadian tetap bebas.
+    lup = asyncio.get_running_loop()
+    hasil = await lup.run_in_executor(
+        None, _cari_sinkron, kueri, region, maks, berita, rentang
+    )
 
     if not hasil:
         jawaban = ""
