@@ -91,6 +91,9 @@ cd server
 docker compose up -d --build
 ```
 
+Server ini juga tersedia sebagai repositori tersendiri yang siap diunggah ke
+Render.com: **https://github.com/hairift/Server-Python-IoT**
+
 Rincian lengkap ada di [panduan build dan flash](docs/riri-build.md).
 
 ## Prioritas Jawaban AI

@@ -121,9 +121,15 @@ curl http://localhost:8000/health
 
 ## Menerapkan ke Render.com
 
-1. Unggah folder `server/` ke repositori GitHub Anda.
+Kode servernya juga tersedia sebagai repositori tersendiri yang siap dipakai
+Render, lengkap dengan panduan langkah demi langkah:
+
+**https://github.com/hairift/Server-Python-IoT**
+
+1. Fork atau unggah repositori itu ke akun GitHub Anda.
 2. Di Render.com pilih **New**, lalu **Blueprint**, arahkan ke repositori itu.
-   Berkas `render.yaml` sudah menyiapkan layanan web dan Redis sekaligus.
+   Berkas `render.yaml` menyiapkan layanan webnya. Singgahan memakai memori
+   proses secara bawaan; Redis dapat ditambahkan belakangan lewat dashboard.
 3. Isi Environment Variables:
    - `RIRI_SECRET_KEY` sama dengan `CONFIG_RIRI_SERVER_SECRET` di firmware
    - `YOUTUBE_API_KEY` berisi kunci YouTube Data API v3
