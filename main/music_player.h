@@ -44,6 +44,10 @@ public:
     size_t Read(uint8_t* dest, size_t max_size);
 
     size_t Size();
+    // Kapasitas yang benar-benar berhasil dialokasikan, yang belum tentu sama
+    // dengan yang diminta karena alokasinya diturunkan bertahap saat PSRAM
+    // tidak menyediakan blok seukuran itu.
+    size_t Capacity();
     void Close();
     void Reset();
     bool closed();
@@ -133,13 +137,13 @@ private:
     // Nada tunggu yang berbunyi selama lagu disiapkan.
     //
     // Diulang selama penantian dan dipotong begitu lagunya siap, sehingga
-    // pengguna selalu dapat membedakan "sedang mengunduh" dari "macet".
+    // pengguna selalu dapat membedakan "sedang menyiapkan" dari "macet".
+    static void NadaTungguTask(void* arg);
+    void RunNadaTunggu();
     void MulaiNadaTunggu();
-    void LanjutkanNadaTunggu();
     void HentikanNadaTunggu();
 
-    int64_t nada_tunggu_berikutnya_us_ = 0;
-    bool nada_tunggu_aktif_ = false;
+    std::atomic<bool> nada_tunggu_aktif_{false};
     std::atomic<bool> sesi_ditutup_{false};
 
     std::mutex control_mutex_;

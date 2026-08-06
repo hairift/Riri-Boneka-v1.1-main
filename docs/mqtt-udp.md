@@ -238,8 +238,25 @@ Uses **AES-CTR** with:
 
 - **Sender**: `local_sequence_` is incremented monotonically.
 - **Receiver**: `remote_sequence_` validates continuity.
-- **Anti-replay**: packets with sequence numbers below the expected value are dropped.
-- **Tolerance**: small gaps are logged as warnings but still accepted.
+- **Anti-replay**: packets already delivered are dropped.
+- **Reordering**: packets that arrive ahead of their predecessors are held in a
+  small buffer and released in order.
+
+Riri Boneka change: the receiver used to drop every packet whose sequence was
+below the highest one seen. Home Wi-Fi routinely delivers packets slightly out
+of order rather than losing them, so intact packets were being discarded, and
+each discard left a gap of a few tens of milliseconds in the assistant's voice.
+That is what listeners hear as choppy speech during long answers.
+
+The buffer holds at most six packets, roughly 360 ms at a 60 ms frame duration.
+That is long enough to reorder home Wi-Fi and still too short to be perceived as
+a delay. When it overflows, the missing range is skipped so audio keeps flowing
+rather than stalling forever.
+
+Whatever is still held is released as soon as a control message arrives, since
+control messages mark the boundary between speech stages. Without that, the last
+packets of a sentence would wait forever for a predecessor that never comes,
+because no further audio packet arrives to trigger the drain.
 
 ### 4.4 Error handling
 

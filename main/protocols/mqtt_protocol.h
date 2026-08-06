@@ -52,7 +52,27 @@ private:
     int udp_port_;
     uint32_t local_sequence_;
     uint32_t remote_sequence_;
+
+    // Penyangga penyusun ulang paket audio masuk.
+    //
+    // Jaringan nirkabel rumah kerap mengirimkan paket sedikit tertukar
+    // urutannya. Tanpa penyangga ini paket yang tertukar dianggap usang dan
+    // dibuang, sehingga suara Riri berlubang beberapa puluh milidetik setiap
+    // kali itu terjadi.
+    std::map<uint32_t, std::unique_ptr<AudioStreamPacket>> penyangga_urut_;
+    // Enam paket setara sekitar 360 milidetik pada bingkai 60 milidetik. Cukup
+    // untuk menyusun ulang jaringan rumah, dan masih terlalu singkat untuk
+    // terasa sebagai jeda.
+    static constexpr size_t kMaksPaketTertunda = 6;
+
     esp_timer_handle_t reconnect_timer_;
+
+    // Melepaskan seluruh paket yang masih menunggu paket hilang menyusul.
+    //
+    // Dipanggil saat pesan kendali datang, yang menandai batas antar tahap
+    // bicara. Tanpa ini, paket terakhir sebuah kalimat bisa tertahan selamanya
+    // karena tidak ada lagi paket berikutnya yang memicu pengurasan.
+    void LepaskanPaketTertahan();
 
     bool StartMqttClient(bool report_error=false);
     void ParseServerHello(const cJSON* root);

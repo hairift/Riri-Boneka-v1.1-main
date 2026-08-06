@@ -139,6 +139,11 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
                 });
             }
         } else if (on_incoming_json_ != nullptr) {
+            // Pesan kendali menandai batas antar tahap bicara, misalnya awal
+            // dan akhir pembacaan jawaban. Paket audio yang masih tertahan
+            // menunggu paket hilang harus dilepaskan di titik ini, kalau tidak
+            // ekor kalimat Riri ikut tertahan selamanya dan terpotong.
+            LepaskanPaketTertahan();
             on_incoming_json_(root);
         }
         cJSON_Delete(root);
@@ -301,10 +306,6 @@ bool MqttProtocol::OpenAudioChannel() {
                          remote_sequence_);
                 return;
             }
-            if (sequence != remote_sequence_ + 1) {
-                ESP_LOGW(TAG, "Received audio packet with wrong sequence: %lu, expected: %lu",
-                         sequence, remote_sequence_ + 1);
-            }
         }
 
         const size_t decrypted_size = payload_len;
@@ -320,16 +321,49 @@ bool MqttProtocol::OpenAudioChannel() {
             ESP_LOGE(TAG, "Failed to decrypt audio data");
             return;
         }
+        // Paket yang datang tidak berurutan disusun ulang, bukan dibuang.
+        //
+        // Sebelumnya setiap paket bernomor lebih kecil daripada nomor terakhir
+        // langsung dibuang. Padahal jaringan nirkabel rumah kerap mengirimkan
+        // paket sedikit tertukar urutannya, bukan menghilangkannya. Akibatnya
+        // paket yang sebenarnya utuh ikut terbuang, dan tiap kali itu terjadi
+        // ada celah beberapa puluh milidetik pada suara Riri. Itulah yang
+        // terdengar sebagai patah-patah ketika jawabannya panjang.
+        //
+        // Penyangga ini menahan paket yang datang mendahului sampai paket
+        // sebelumnya menyusul, lalu melepaskan semuanya secara berurutan.
+        std::vector<std::unique_ptr<AudioStreamPacket>> siap_dikirim;
         {
             std::lock_guard<std::mutex> lock(channel_mutex_);
             if (sequence <= remote_sequence_) {
                 return;
             }
-            remote_sequence_ = sequence;
+            penyangga_urut_[sequence] = std::move(packet);
+
+            // Batas penyangga menjaga agar penundaan tidak pernah terasa. Bila
+            // paket yang hilang tidak kunjung datang, celahnya dilewati supaya
+            // suara terus mengalir daripada tertahan menunggu selamanya.
+            if (penyangga_urut_.size() > kMaksPaketTertunda) {
+                const uint32_t paling_awal = penyangga_urut_.begin()->first;
+                ESP_LOGW(TAG, "Melewati paket audio %lu sampai %lu yang tidak datang",
+                         static_cast<unsigned long>(remote_sequence_ + 1),
+                         static_cast<unsigned long>(paling_awal - 1));
+                remote_sequence_ = paling_awal - 1;
+            }
+
+            while (!penyangga_urut_.empty() &&
+                   penyangga_urut_.begin()->first == remote_sequence_ + 1) {
+                siap_dikirim.push_back(std::move(penyangga_urut_.begin()->second));
+                penyangga_urut_.erase(penyangga_urut_.begin());
+                ++remote_sequence_;
+            }
         }
+
         last_incoming_time_ = std::chrono::steady_clock::now();
         if (on_incoming_audio_ != nullptr) {
-            on_incoming_audio_(std::move(packet));
+            for (auto& siap : siap_dikirim) {
+                on_incoming_audio_(std::move(siap));
+            }
         }
     });
 
@@ -346,6 +380,28 @@ bool MqttProtocol::OpenAudioChannel() {
         on_audio_channel_opened_();
     }
     return true;
+}
+
+void MqttProtocol::LepaskanPaketTertahan() {
+    std::vector<std::unique_ptr<AudioStreamPacket>> siap_dikirim;
+    {
+        std::lock_guard<std::mutex> lock(channel_mutex_);
+        if (penyangga_urut_.empty()) {
+            return;
+        }
+        ESP_LOGW(TAG, "Melepaskan %u paket audio yang tertahan menunggu paket hilang",
+                 static_cast<unsigned>(penyangga_urut_.size()));
+        for (auto& butir : penyangga_urut_) {
+            siap_dikirim.push_back(std::move(butir.second));
+            remote_sequence_ = butir.first;
+        }
+        penyangga_urut_.clear();
+    }
+    if (on_incoming_audio_ != nullptr) {
+        for (auto& siap : siap_dikirim) {
+            on_incoming_audio_(std::move(siap));
+        }
+    }
 }
 
 std::string MqttProtocol::GetHelloMessage() {
@@ -462,6 +518,9 @@ void MqttProtocol::ParseServerHello(const cJSON* root) {
         aes_nonce_ = std::move(aes_nonce);
         local_sequence_ = 0;
         remote_sequence_ = 0;
+        // Sisa paket dari sesi sebelumnya harus dibuang, kalau tidak nomor
+        // urutnya bertabrakan dengan sesi baru yang mulai lagi dari nol.
+        penyangga_urut_.clear();
     }
     xEventGroupSetBits(event_group_handle_, MQTT_PROTOCOL_SERVER_HELLO_EVENT);
 }

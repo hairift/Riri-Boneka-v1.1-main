@@ -83,12 +83,25 @@ stereo ke mono dan tidak perlu mengubah laju cuplik sama sekali.
 **Kebutuhan jaringan turun jauh.** Dari sekitar 40 KB per detik untuk MP3 320
 kbps stereo menjadi sekitar 6 KB per detik.
 
-**Lagunya dimuat seluruhnya ke PSRAM sebelum diputar.** Penyangganya 4 MB,
-sedangkan lagu sepuluh menit pun di bawah 3,5 MB. Inilah yang paling menentukan
-pada Wi-Fi yang buruk: begitu nada pertama berbunyi, jaringan sudah tidak
-dipakai lagi sama sekali, sehingga gangguan jaringan setelah itu tidak mungkin
-terdengar. Sebelumnya penyangganya hanya 192 KB dan sisa lagu tetap harus
-mengalir selama pemutaran.
+**Lagunya dimuat seluruhnya ke PSRAM sebelum diputar.** Penyangganya diminta
+4 MB, sedangkan lagu sepuluh menit pun di bawah 3,5 MB. Inilah yang paling
+menentukan pada Wi-Fi yang buruk: begitu nada pertama berbunyi, jaringan sudah
+tidak dipakai lagi sama sekali, sehingga gangguan jaringan setelah itu tidak
+mungkin terdengar. Sebelumnya penyangganya hanya 192 KB dan sisa lagu tetap
+harus mengalir selama pemutaran.
+
+Ukurannya diturunkan bertahap menjadi 2 MB, 1 MB, dan seterusnya sampai 256 KB
+bila PSRAM tidak menyediakan blok sebesar itu. Model pengenal suara sudah
+memakai sebagian besar PSRAM dan sisanya belum tentu berupa satu blok utuh:
+permintaan 4 MB pernah gagal seluruhnya, dan yang terdengar hanya "memori
+perangkat tidak cukup" tanpa lagu sama sekali. Penyangga yang lebih kecil hanya
+berarti sebagian lagu masih mengalir selama pemutaran, dan itu jauh lebih baik
+daripada tidak memutar apa pun.
+
+Ambang isi awal ikut dibatasi tiga perempat kapasitas yang benar-benar didapat.
+Bila ambangnya melebihi kapasitas, tugas jaringan berhenti menulis karena
+penyangga penuh sementara tugas dekoder menunggu ambang yang tidak mungkin
+tercapai, dan keduanya saling menunggu selamanya.
 
 **Unduhan baru dimulai setelah Riri selesai bicara.** Mengunduh ratusan kilobyte
 bersamaan dengan penguraian TTS membuat paket suara terlambat sampai ke antrean
@@ -140,6 +153,19 @@ Selama lagu disiapkan, boneka membunyikan `loading.ogg` berulang. Nada itu
 berhenti begitu lagunya siap, dan antrean pemutaran dikosongkan supaya sisanya
 tidak menimpa awal lagu. Nada tunggu juga berhenti sendiri bila pengguna
 memanggil AI di tengah penantian.
+
+Nada tunggu berjalan di tugasnya sendiri, bukan di dalam tugas dekoder.
+Mengantre berkas `.ogg` menunggu sampai seluruh isinya masuk antrean, dan
+penantian itu dibatasi kecepatan pemutaran. Untuk berkas berdurasi enam belas
+detik, memutarnya di dalam tugas dekoder berarti dekoder tidak sempat menyadari
+bahwa lagunya sudah siap sampai belasan detik kemudian.
+
+`AudioService::PlaySound` menerima fungsi pembatalan agar berkas panjang dapat
+dipotong di tengah. Tanpa itu, nada tunggu tetap mengantre sampai habis dan
+terdengar menimpa awal lagu maupun suara reaksi sentuhan.
+
+Sentuhan foil menghentikan nada tunggu lebih dulu, baru memainkan suara
+reaksinya, sehingga keduanya tidak pernah bertumpuk.
 
 Tanpa nada tunggu, boneka terdengar membisu begitu saja dan tidak ada cara
 membedakan "sedang menyiapkan" dari "macet".

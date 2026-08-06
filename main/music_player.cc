@@ -13,6 +13,7 @@
 #include <new>
 
 #include <cJSON.h>
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
 #include <psa/crypto.h>
@@ -55,6 +56,9 @@ constexpr int kMusicStreamConnectId = 5;
 // kapasitas seukuran lagu, pemutaran berjalan sepenuhnya dari memori dan
 // jaringan sudah tidak dipakai lagi sejak nada pertama.
 constexpr size_t kRingCapacity = 4 * 1024 * 1024;
+// Batas bawah penurunan bertahap bila kapasitas penuh tidak tersedia. Di bawah
+// ini penyangganya terlalu tipis untuk menahan gangguan jaringan sama sekali.
+constexpr size_t kKapasitasMinimum = 256 * 1024;
 // Isi awal sebelum dekode dimulai bila lagunya ternyata lebih besar daripada
 // penyangga. Untuk lagu berukuran normal, pemutaran menunggu unduhan selesai.
 constexpr size_t kPrebufferBytes = 512 * 1024;
@@ -87,9 +91,10 @@ constexpr int kMaxRedirects = 4;
 
 // Nada tunggu selama lagu disiapkan.
 constexpr const char* kNadaTungguAsset = "loading.ogg";
-// Berkasnya berdurasi enam belas detik. Diulang sedikit lebih rapat supaya
-// tidak ada keheningan di antara dua putaran.
-constexpr int kNadaTungguUlangMs = 15500;
+// Jeda singkat antar putaran nada tunggu.
+constexpr int kNadaTungguJedaMs = 500;
+// Batas menunggu tugas nada tunggu benar-benar berhenti.
+constexpr int kNadaTungguBerhentiTimeoutMs = 1500;
 
 constexpr int kIdleWaitMs = 30000;       // tunggu AI selesai bicara sebelum musik mulai
 constexpr int kMinAnswerGraceMs = 2000;  // beri waktu server memulai TTS jawaban
@@ -115,6 +120,7 @@ constexpr int kResolveJedaUlangMs = 3000;
 
 constexpr EventBits_t kNetworkTaskDone = (1 << 0);
 constexpr EventBits_t kDecoderTaskDone = (1 << 1);
+constexpr EventBits_t kNadaTungguTaskDone = (1 << 2);
 
 bool g_decoder_registered = false;
 
@@ -335,9 +341,38 @@ std::string HttpGetText(const std::string& url, int timeout_ms, size_t max_bytes
 bool MusicRingBuffer::Allocate(size_t capacity) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (data_.size() != capacity) {
-        try {
-            data_.assign(capacity, 0);
-        } catch (const std::bad_alloc&) {
+        // Meminta satu ukuran tetap terlalu rapuh.
+        //
+        // PSRAM memang delapan megabyte, tetapi model pengenal suara sudah
+        // memakai sebagian besar dan sisanya belum tentu berupa satu blok utuh.
+        // Permintaan empat megabyte pernah gagal seluruhnya, sehingga musik
+        // tidak dapat diputar sama sekali dan yang terdengar hanya "memori
+        // perangkat tidak cukup".
+        //
+        // Karena itu ukurannya diturunkan bertahap sampai ada yang berhasil.
+        // Penyangga yang lebih kecil hanya berarti sebagian lagu masih perlu
+        // mengalir selama pemutaran, dan itu jauh lebih baik daripada tidak
+        // memutar apa pun.
+        bool berhasil = false;
+        for (size_t coba = capacity; coba >= kKapasitasMinimum; coba /= 2) {
+            try {
+                data_.assign(coba, 0);
+                berhasil = true;
+                if (coba != capacity) {
+                    ESP_LOGW(TAG, "Buffer musik %u KB tidak tersedia, memakai %u KB",
+                             static_cast<unsigned>(capacity / 1024),
+                             static_cast<unsigned>(coba / 1024));
+                }
+                break;
+            } catch (const std::bad_alloc&) {
+                std::vector<uint8_t>().swap(data_);
+            }
+        }
+        if (!berhasil) {
+            ESP_LOGE(TAG, "PSRAM bebas terbesar tidak cukup, sisa %u KB dari total %u KB",
+                     static_cast<unsigned>(
+                         heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) / 1024),
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
             std::vector<uint8_t>().swap(data_);
             closed_ = true;
             return false;
@@ -400,6 +435,11 @@ size_t MusicRingBuffer::Read(uint8_t* dest, size_t max_size) {
 size_t MusicRingBuffer::Size() {
     std::lock_guard<std::mutex> lock(mutex_);
     return size_;
+}
+
+size_t MusicRingBuffer::Capacity() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return data_.size();
 }
 
 void MusicRingBuffer::Close() {
@@ -715,51 +755,73 @@ bool MusicPlayer::ResolveFromMusicServer(const std::string& requested_song,
 // Tugas jaringan
 // ---------------------------------------------------------------------------
 
-void MusicPlayer::MulaiNadaTunggu() {
-    nada_tunggu_aktif_ = true;
-    // Nol memaksa pemutaran pertama terjadi pada pemanggilan berikutnya.
-    nada_tunggu_berikutnya_us_ = 0;
+void MusicPlayer::NadaTungguTask(void* arg) {
+    static_cast<MusicPlayer*>(arg)->RunNadaTunggu();
+    vTaskDelete(nullptr);
 }
 
-void MusicPlayer::LanjutkanNadaTunggu() {
-    if (!nada_tunggu_aktif_ || stop_requested_.load()) {
-        return;
-    }
-    // Hanya berbunyi saat perangkat menganggur. Bila AI ternyata aktif lagi,
-    // nada tunggu langsung berhenti supaya tidak menimpa suaranya.
-    if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle) {
-        HentikanNadaTunggu();
-        return;
-    }
-
-    const int64_t sekarang = esp_timer_get_time();
-    if (sekarang < nada_tunggu_berikutnya_us_) {
-        return;
-    }
-
+void MusicPlayer::RunNadaTunggu() {
     void* ptr = nullptr;
     size_t size = 0;
     if (!Assets::GetInstance().GetAssetData(kNadaTungguAsset, ptr, size) ||
         ptr == nullptr || size == 0) {
-        // Berkasnya tidak ada di partisi aset. Tidak fatal, jadi cukup berhenti
-        // mencoba daripada mengulang pencarian setiap lima puluh milidetik.
         ESP_LOGW(TAG, "Aset nada tunggu %s tidak ditemukan", kNadaTungguAsset);
         nada_tunggu_aktif_ = false;
+        xEventGroupSetBits(event_group_, kNadaTungguTaskDone);
         return;
     }
 
-    Application::GetInstance().PlaySound(
-        std::string_view(static_cast<const char*>(ptr), size));
-    nada_tunggu_berikutnya_us_ = sekarang + kNadaTungguUlangMs * 1000LL;
+    auto& app = Application::GetInstance();
+    // Berhenti sendiri bila dibatalkan, permintaan lagunya dibatalkan, atau AI
+    // menjadi aktif lagi. Yang terakhir mencegah nada tunggu menimpa suara AI.
+    auto dibatalkan = [this, &app]() {
+        return !nada_tunggu_aktif_.load() || stop_requested_.load() ||
+               app.GetDeviceState() != kDeviceStateIdle;
+    };
+
+    while (!dibatalkan()) {
+        app.GetAudioService().PlaySound(
+            std::string_view(static_cast<const char*>(ptr), size), dibatalkan);
+        // Jeda singkat antar putaran supaya antrean sempat terkuras dan
+        // penantian yang panjang tidak terdengar sebagai nada bersambung terus.
+        for (int menunggu = 0; menunggu < kNadaTungguJedaMs && !dibatalkan(); menunggu += 50) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+    }
+
+    nada_tunggu_aktif_ = false;
+    xEventGroupSetBits(event_group_, kNadaTungguTaskDone);
+}
+
+void MusicPlayer::MulaiNadaTunggu() {
+    if (nada_tunggu_aktif_.load() || event_group_ == nullptr) {
+        return;
+    }
+    nada_tunggu_aktif_ = true;
+    xEventGroupClearBits(event_group_, kNadaTungguTaskDone);
+    // Dijalankan di tugas tersendiri, bukan di dalam tugas dekoder.
+    //
+    // Mengantre berkas .ogg menunggu sampai seluruh isinya masuk, dan
+    // penantiannya dibatasi kecepatan pemutaran. Untuk nada tunggu berdurasi
+    // enam belas detik, memutarnya di tugas dekoder berarti dekoder tidak
+    // sempat menyadari bahwa lagunya sudah siap sampai belasan detik kemudian.
+    if (xTaskCreate(NadaTungguTask, "riri_tunggu", 4096, this, 1, nullptr) != pdPASS) {
+        ESP_LOGW(TAG, "Tugas nada tunggu tidak dapat dibuat");
+        nada_tunggu_aktif_ = false;
+        xEventGroupSetBits(event_group_, kNadaTungguTaskDone);
+    }
 }
 
 void MusicPlayer::HentikanNadaTunggu() {
-    if (!nada_tunggu_aktif_) {
+    if (event_group_ == nullptr) {
         return;
     }
     nada_tunggu_aktif_ = false;
-    // Antrean pemutaran dikosongkan supaya sisa nada tunggu tidak ikut
-    // terdengar menimpa awal lagu.
+    // Ditunggu sampai benar-benar berhenti, kalau tidak sisa paketnya masih
+    // sempat masuk antrean setelah antrean dikosongkan dan justru terdengar
+    // menimpa awal lagu maupun suara reaksi sentuhan.
+    xEventGroupWaitBits(event_group_, kNadaTungguTaskDone, pdFALSE, pdTRUE,
+                        pdMS_TO_TICKS(kNadaTungguBerhentiTimeoutMs));
     Application::GetInstance().GetAudioService().ClearPlaybackQueue();
 }
 
@@ -1003,9 +1065,16 @@ void MusicPlayer::RunDecoder() {
     // Tanpa itu boneka terdengar membisu begitu saja, dan tidak ada cara
     // membedakan "sedang menyiapkan" dari "macet". Itulah yang paling sering
     // ditanyakan ketika ada gangguan.
+    // Ambang isi awal tidak boleh melebihi kapasitas yang benar-benar didapat.
+    //
+    // Bila penyangganya turun ke ukuran lebih kecil daripada ambang ini, tugas
+    // jaringan berhenti menulis karena penyangga penuh sementara tugas dekoder
+    // terus menunggu ambang yang tidak mungkin tercapai. Keduanya lalu saling
+    // menunggu selamanya dan lagunya tidak pernah berbunyi.
+    const size_t ambang_isi_awal =
+        std::min(kPrebufferBytes, ring_.Capacity() * 3 / 4);
     MulaiNadaTunggu();
-    while (!stop_requested_.load() && !ring_.closed() && ring_.Size() < kPrebufferBytes) {
-        LanjutkanNadaTunggu();
+    while (!stop_requested_.load() && !ring_.closed() && ring_.Size() < ambang_isi_awal) {
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     HentikanNadaTunggu();

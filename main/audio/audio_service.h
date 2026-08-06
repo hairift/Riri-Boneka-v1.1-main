@@ -149,6 +149,10 @@ public:
     bool PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> packet, bool wait = false);
     std::unique_ptr<AudioStreamPacket> PopPacketFromSendQueue();
     void PlaySound(const std::string_view& sound);
+    // Sama, tetapi berhenti mengantre sisa berkasnya begitu dibatalkan
+    // mengembalikan benar. Diperlukan untuk berkas panjang seperti nada tunggu:
+    // tanpa itu pemanggilnya tertahan selama durasi berkasnya.
+    void PlaySound(const std::string_view& sound, std::function<bool()> dibatalkan);
 
     /* Tambahan Riri Boneka.
        Layanan audio siap dipakai setelah Initialize() selesai. Sensor sentuh
