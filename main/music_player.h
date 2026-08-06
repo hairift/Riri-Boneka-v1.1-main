@@ -126,9 +126,28 @@ private:
     bool StartTasks();
     void WaitTasksStopped(int timeout_ms);
 
+    // Menunggu Riri selesai bicara dan sesi percakapan ditutup. Mengembalikan
+    // salah bila permintaan dibatalkan atau perangkat tidak kunjung menganggur.
+    bool TungguPerangkatMenganggur();
+
+    // Nada tunggu yang berbunyi selama lagu disiapkan.
+    //
+    // Diulang selama penantian dan dipotong begitu lagunya siap, sehingga
+    // pengguna selalu dapat membedakan "sedang mengunduh" dari "macet".
+    void MulaiNadaTunggu();
+    void LanjutkanNadaTunggu();
+    void HentikanNadaTunggu();
+
+    int64_t nada_tunggu_berikutnya_us_ = 0;
+    bool nada_tunggu_aktif_ = false;
+    std::atomic<bool> sesi_ditutup_{false};
+
     std::mutex control_mutex_;
     std::mutex track_mutex_;
     MusicTrack track_;
+    // Permintaan pengguna, disimpan sampai tugas jaringan sempat mencarinya.
+    std::string permintaan_judul_;
+    std::string permintaan_penyanyi_;
 
     MusicRingBuffer ring_;
     std::atomic<bool> playing_{false};

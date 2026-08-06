@@ -132,7 +132,7 @@ public:
                     "11. Jika data lokal memuat nama dosen dengan gelar lengkap, gunakan nama formal lengkap tersebut saat menjawab pertanyaan tentang dosen.\n"
                     "12. Untuk penyebutan lisan, bacakan S1 sebagai sarjana, D3 sebagai diploma tiga, gelar dan nama mata kuliah yang memang berbahasa Inggris tetap dalam bahasa Inggris, gelar berbahasa Indonesia dengan bentuk panjang bahasa Indonesia, dan angka biaya, tahun, atau alamat sebagai angka utuh dalam bahasa Indonesia, bukan digit satu per satu.\n"
                     "13. Jika tool kampus memberi bentuk penyebutan lisan, prioritaskan bentuk itu.\n"
-                    "14. Jika pengguna meminta memutar lagu atau musik, panggil self.music.play dengan nama penyanyi dan judul lagu apa adanya, lalu sampaikan kembali kalimat status dari tool tersebut tanpa menambah klaim baru. Untuk permintaan berhenti, panggil self.music.stop.");
+                    "14. Jika pengguna meminta memutar lagu atau musik, panggil self.music.play dengan nama penyanyi dan judul lagu apa adanya, lalu sampaikan kembali kalimat status dari tool tersebut tanpa menambah klaim baru. Tool itu menjawab bahwa lagunya sedang dicari, jadi jangan pernah berkata lagunya gagal atau tidak ditemukan setelah memanggilnya. Untuk permintaan berhenti, panggil self.music.stop.");
             });
         academic_policy->set_run_on_main_thread(false);
         mcp.AddTool(academic_policy);
@@ -169,8 +169,11 @@ public:
             "Jika pengguna tidak menyebut penyanyinya, kosongkan artist. Jika pengguna hanya menyebut nama penyanyi tanpa judul, isi artist saja dan kosongkan song. "
             "Jangan menambahkan kata seperti lagu, musik, putar, atau tolong ke dalam song maupun artist. "
             "Jangan mengarang judul lagu yang tidak disebut pengguna. "
-            "Setelah tool ini menjawab, sampaikan kembali kalimat statusnya kepada pengguna secara singkat dan jangan mengarang durasi atau sumber lain. "
-            "Sebutkan judul dan nama penyanyi persis seperti yang dikembalikan tool ini.",
+            "Tool ini menjawab seketika bahwa lagunya sedang dicari, bukan bahwa lagunya sudah berbunyi. "
+            "Pencarian dan pengunduhan berjalan sesudahnya, dan selama itu boneka membunyikan nada tunggu, lalu lagunya mulai sendiri. "
+            "Sampaikan kembali kalimat status dari tool ini apa adanya secara singkat. "
+            "Jangan berkata lagunya gagal, tidak ditemukan, atau kehabisan waktu, karena tool ini belum tahu hasil akhirnya saat menjawab. "
+            "Jangan mengarang judul, penyanyi, durasi, atau sumber yang tidak dikembalikan tool ini.",
             PropertyList({
                 Property("song", kPropertyTypeString, std::string("")),
                 Property("artist", kPropertyTypeString, std::string(""))

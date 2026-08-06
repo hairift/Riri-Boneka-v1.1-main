@@ -1,6 +1,7 @@
 #include "music_player.h"
 
 #include "application.h"
+#include "assets.h"
 #include "audio_codec.h"
 #include "board.h"
 #include "system_info.h"
@@ -41,18 +42,27 @@ namespace {
 constexpr int kMusicSearchConnectId = 4;
 constexpr int kMusicStreamConnectId = 5;
 
-// Cadangan melawan Wi-Fi tersendat, penyebab utama suara patah-patah.
-// scripts/music_server.py mengirim MP3 mono 24 kHz sekitar 96 kbps, jadi satu
-// detik audio hanya memakai sekitar 12 KB dan kapasitas ini setara belasan
-// detik. Untuk sumber 320 kbps stereo cadangannya sekitar 4,8 detik.
-constexpr size_t kRingCapacity = 192 * 1024;
-// Isi awal sebelum dekode dimulai. Nilai ini menahan gangguan jaringan pertama
-// tanpa membuat jeda mulai terasa lama.
-constexpr size_t kPrebufferBytes = 32 * 1024;
-// Ambang isi ulang penyangga saat jaringan tersendat di tengah lagu.
-constexpr size_t kRebufferLowWaterBytes = 6 * 1024;
-constexpr size_t kRebufferTargetBytes = 24 * 1024;
-constexpr int kRebufferTimeoutMs = 5000;
+// Penyangga lagu, dialokasikan di PSRAM.
+//
+// Ukurannya sengaja cukup untuk menampung satu lagu utuh, bukan sekadar
+// beberapa detik. Server mengirim MP3 mono 24 kHz sekitar 47 kbps, jadi satu
+// detik hanya sekitar 6 KB dan lagu sepuluh menit pun di bawah 3,5 MB. PSRAM
+// yang tersedia 8 MB, dan alokasi di atas 2 KB memang diarahkan ke sana.
+//
+// Inilah yang membuat lagu tidak lagi patah-patah pada Wi-Fi yang buruk.
+// Sebelumnya penyangganya 192 KB, sehingga sisa lagu tetap harus mengalir
+// selama pemutaran dan setiap gangguan jaringan langsung terdengar. Dengan
+// kapasitas seukuran lagu, pemutaran berjalan sepenuhnya dari memori dan
+// jaringan sudah tidak dipakai lagi sejak nada pertama.
+constexpr size_t kRingCapacity = 4 * 1024 * 1024;
+// Isi awal sebelum dekode dimulai bila lagunya ternyata lebih besar daripada
+// penyangga. Untuk lagu berukuran normal, pemutaran menunggu unduhan selesai.
+constexpr size_t kPrebufferBytes = 512 * 1024;
+// Ambang isi ulang penyangga, hanya terpakai untuk lagu yang lebih besar
+// daripada penyangga.
+constexpr size_t kRebufferLowWaterBytes = 64 * 1024;
+constexpr size_t kRebufferTargetBytes = 256 * 1024;
+constexpr int kRebufferTimeoutMs = 15000;
 
 constexpr size_t kNetworkChunkBytes = 1460;
 constexpr size_t kDecodeChunkBytes = 2048;
@@ -75,6 +85,12 @@ constexpr int kSearchTimeoutMs = 40000;
 constexpr int kStreamTimeoutMs = 20000;
 constexpr int kMaxRedirects = 4;
 
+// Nada tunggu selama lagu disiapkan.
+constexpr const char* kNadaTungguAsset = "loading.ogg";
+// Berkasnya berdurasi enam belas detik. Diulang sedikit lebih rapat supaya
+// tidak ada keheningan di antara dua putaran.
+constexpr int kNadaTungguUlangMs = 15500;
+
 constexpr int kIdleWaitMs = 30000;       // tunggu AI selesai bicara sebelum musik mulai
 constexpr int kMinAnswerGraceMs = 2000;  // beri waktu server memulai TTS jawaban
 constexpr int kAnswerDrainedStableMs = 800;
@@ -84,13 +100,18 @@ constexpr int kTaskStopTimeoutMs = 4000;
 // Jawaban server musik hanya berisi beberapa field pendek, jadi batasnya kecil.
 constexpr size_t kMusicServerResponseBytes = 8 * 1024;
 
-// Seluruh pencarian harus selesai jauh sebelum server MCP menyerah menunggu,
-// kalau tidak AI akan menjawab "ada kendala teknis" walau lagunya ada.
-//
-// Anggarannya harus melebihi kSearchTimeoutMs, kalau tidak anggaran inilah yang
-// memutus permintaan lebih dulu dan batas waktu yang lebih longgar itu tidak
-// pernah terpakai.
+// Anggaran satu kali percobaan pencarian. Harus melebihi kSearchTimeoutMs,
+// kalau tidak anggaran inilah yang memutus permintaan lebih dulu dan batas
+// waktu yang lebih longgar itu tidak pernah terpakai.
 constexpr int64_t kResolveBudgetUs = 50LL * 1000LL * 1000LL;
+// Banyaknya percobaan pencarian sebelum benar-benar menyerah.
+//
+// Pencarian kini berjalan di latar belakang dan tidak lagi menahan jawaban AI,
+// jadi mengulang tidak membuat siapa pun menunggu dalam diam. Percobaan kedua
+// biasanya langsung berhasil karena server sudah selesai menyiapkan lagu yang
+// sama dan tinggal mengambilnya dari singgahan.
+constexpr int kResolvePercobaanMaks = 3;
+constexpr int kResolveJedaUlangMs = 3000;
 
 constexpr EventBits_t kNetworkTaskDone = (1 << 0);
 constexpr EventBits_t kDecoderTaskDone = (1 << 1);
@@ -484,19 +505,25 @@ std::string MusicPlayer::Play(const std::string& song, const std::string& artist
         return std::string("Perangkat audio belum siap, coba lagi sebentar.");
     }
 
-    MusicTrack track;
-    if (!ResolveTrack(cleaned, cleaned_artist, track)) {
-        return std::string("Lagu \"") + cleaned +
-            "\" belum bisa diputar. Server musik tidak menjawab atau lagunya tidak ditemukan. "
-            "Coba sebutkan judul dan nama penyanyi dengan lebih lengkap.";
-    }
-
+    // Pencarian tidak dilakukan di sini, melainkan di tugas jaringan.
+    //
+    // Server MCP menyerah menunggu jawaban alat sekitar sepuluh detik, padahal
+    // menyiapkan lagu baru memerlukan belasan sampai tiga puluhan detik. Ketika
+    // pencarian masih dilakukan di sini, AI selalu terlanjur berkata "gagal
+    // karena waktu habis" walaupun servernya sedang menyiapkan lagunya dengan
+    // baik, dan lagu yang sudah jadi itu terbuang percuma.
+    //
+    // Dengan menjawab seketika, AI mengabarkan bahwa lagunya sedang dicari,
+    // nada tunggu berbunyi selama penyiapan, lalu lagunya mulai sendiri.
     {
         std::lock_guard<std::mutex> lock(track_mutex_);
-        track_ = track;
+        track_ = MusicTrack();
+        permintaan_judul_ = cleaned;
+        permintaan_penyanyi_ = cleaned_artist;
     }
 
     stop_requested_ = false;
+    sesi_ditutup_ = false;
     if (!ring_.Allocate(kRingCapacity)) {
         ESP_LOGE(TAG, "Gagal mengalokasikan buffer musik");
         return std::string("Memori perangkat tidak cukup untuk memutar musik saat ini.");
@@ -512,12 +539,15 @@ std::string MusicPlayer::Play(const std::string& song, const std::string& artist
         return std::string("Tidak dapat memulai pemutar musik saat ini.");
     }
 
-    std::string answer = "Memutar " + track.title;
-    if (!track.artist.empty()) {
-        answer += " dari " + track.artist;
+    std::string answer = "Sedang mencari lagu " + cleaned;
+    if (!cleaned_artist.empty()) {
+        answer += " dari " + cleaned_artist;
     }
-    answer += ".";
-    answer += " Sebutkan berhenti atau sentuh tangan Riri untuk menghentikan lagu.";
+    answer += ". ";
+    // Jawaban ini dibacakan AI, jadi bentuknya kalimat untuk pengguna, bukan
+    // laporan teknis. Nada tunggu memberi tahu bahwa penyiapan sedang berjalan.
+    answer += "Akan terdengar nada tunggu sebentar, lalu lagunya mulai sendiri. "
+              "Ucapkan hai hai atau sentuh tangan Riri untuk menghentikannya.";
     return answer;
 }
 
@@ -685,12 +715,178 @@ bool MusicPlayer::ResolveFromMusicServer(const std::string& requested_song,
 // Tugas jaringan
 // ---------------------------------------------------------------------------
 
+void MusicPlayer::MulaiNadaTunggu() {
+    nada_tunggu_aktif_ = true;
+    // Nol memaksa pemutaran pertama terjadi pada pemanggilan berikutnya.
+    nada_tunggu_berikutnya_us_ = 0;
+}
+
+void MusicPlayer::LanjutkanNadaTunggu() {
+    if (!nada_tunggu_aktif_ || stop_requested_.load()) {
+        return;
+    }
+    // Hanya berbunyi saat perangkat menganggur. Bila AI ternyata aktif lagi,
+    // nada tunggu langsung berhenti supaya tidak menimpa suaranya.
+    if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle) {
+        HentikanNadaTunggu();
+        return;
+    }
+
+    const int64_t sekarang = esp_timer_get_time();
+    if (sekarang < nada_tunggu_berikutnya_us_) {
+        return;
+    }
+
+    void* ptr = nullptr;
+    size_t size = 0;
+    if (!Assets::GetInstance().GetAssetData(kNadaTungguAsset, ptr, size) ||
+        ptr == nullptr || size == 0) {
+        // Berkasnya tidak ada di partisi aset. Tidak fatal, jadi cukup berhenti
+        // mencoba daripada mengulang pencarian setiap lima puluh milidetik.
+        ESP_LOGW(TAG, "Aset nada tunggu %s tidak ditemukan", kNadaTungguAsset);
+        nada_tunggu_aktif_ = false;
+        return;
+    }
+
+    Application::GetInstance().PlaySound(
+        std::string_view(static_cast<const char*>(ptr), size));
+    nada_tunggu_berikutnya_us_ = sekarang + kNadaTungguUlangMs * 1000LL;
+}
+
+void MusicPlayer::HentikanNadaTunggu() {
+    if (!nada_tunggu_aktif_) {
+        return;
+    }
+    nada_tunggu_aktif_ = false;
+    // Antrean pemutaran dikosongkan supaya sisa nada tunggu tidak ikut
+    // terdengar menimpa awal lagu.
+    Application::GetInstance().GetAudioService().ClearPlaybackQueue();
+}
+
+bool MusicPlayer::TungguPerangkatMenganggur() {
+    // Musik hanya boleh terdengar saat perangkat menganggur, kalau tidak lagu
+    // akan masuk ke mikrofon dan dikirim ke server sebagai suara pengguna.
+    //
+    // Saat tool dipanggil, AI masih membacakan jawabannya. Setelah jawaban
+    // selesai perangkat berpindah ke status mendengarkan, bukan menganggur,
+    // jadi sesi percakapan harus ditutup dulu secara eksplisit.
+    //
+    // Dipakai bersama oleh tugas jaringan dan tugas dekoder. Keduanya menunggu
+    // syarat yang sama, dan yang kedua langsung lolos karena syaratnya sudah
+    // terpenuhi.
+    auto& app = Application::GetInstance();
+    auto& audio_service = app.GetAudioService();
+
+    int waited_ms = 0;
+    int drained_ms = 0;
+    bool end_requested = false;
+    while (!stop_requested_.load() && waited_ms < kIdleWaitMs) {
+        auto state = app.GetDeviceState();
+        if (state == kDeviceStateIdle) {
+            return true;
+        }
+        if (state == kDeviceStateConnecting) {
+            // Status ini hanya muncul saat pengguna membangunkan AI lagi.
+            ESP_LOGI(TAG, "Pengguna memanggil AI, permintaan musik dibatalkan");
+            stop_requested_ = true;
+            break;
+        }
+
+        // Hanya status mendengarkan yang dipakai sebagai tanda jawaban selesai.
+        // Status berbicara tidak dipakai karena antrean audio bisa sesaat kosong
+        // di sela paket TTS, dan menutup sesi di titik itu memotong kalimat AI.
+        //
+        // Kesiapan diperiksa lewat WaitForPlaybackQueueEmpty, bukan IsIdle().
+        // IsIdle() ikut memeriksa antrean encode mikrofon yang praktis tidak
+        // pernah kosong selama perangkat mendengarkan, sehingga syaratnya tidak
+        // akan pernah terpenuhi dan musik selalu gagal setelah batas tunggu.
+        bool playback_drained = audio_service.WaitForPlaybackQueueEmpty(0);
+        if (state == kDeviceStateListening && playback_drained && waited_ms >= kMinAnswerGraceMs) {
+            drained_ms += 100;
+        } else {
+            drained_ms = 0;
+        }
+
+        if (drained_ms >= kAnswerDrainedStableMs && !end_requested) {
+            end_requested = true;
+            // Tugas jaringan dan tugas dekoder sama-sama menunggu di sini, jadi
+            // penutupan sesi dijaga agar hanya terjadi sekali.
+            bool belum = false;
+            if (sesi_ditutup_.compare_exchange_strong(belum, true)) {
+                app.EndConversation();
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+        waited_ms += 100;
+    }
+
+    if (stop_requested_.load()) {
+        ESP_LOGW(TAG, "Pemutaran dibatalkan sebelum mulai");
+        return false;
+    }
+    ESP_LOGW(TAG, "Perangkat tidak kembali menganggur dalam %d ms (state=%d), musik dibatalkan",
+             kIdleWaitMs, static_cast<int>(app.GetDeviceState()));
+    return false;
+}
+
 void MusicPlayer::RunNetwork() {
-    std::string stream_url;
+    // Unduhan tidak boleh dimulai selagi Riri masih membacakan jawabannya.
+    //
+    // Inilah penyebab suara AI patah-patah setiap kali hendak memutar lagu:
+    // mengunduh ratusan kilobyte menyita jaringan dan CPU pada saat yang sama
+    // dengan penguraian TTS, sehingga paket suara terlambat sampai ke antrean
+    // pemutaran. Menunggu sebentar di sini menghilangkan bentrokan itu
+    // sepenuhnya, dan jedanya ditutupi oleh nada tunggu.
+    if (!TungguPerangkatMenganggur()) {
+        ring_.Close();
+        return;
+    }
+
+    std::string judul;
+    std::string penyanyi;
     {
         std::lock_guard<std::mutex> lock(track_mutex_);
-        stream_url = track_.stream_url;
+        judul = permintaan_judul_;
+        penyanyi = permintaan_penyanyi_;
     }
+
+    // Pencarian diulang, bukan sekali coba lalu menyerah.
+    //
+    // Instance server yang baru dibangunkan, Wi-Fi yang sedang tersendat, dan
+    // lagu yang perlu diunduh lebih dahulu sama-sama dapat membuat percobaan
+    // pertama gagal padahal lagunya ada. Nada tunggu berbunyi selama ini, jadi
+    // penantiannya terdengar sebagai proses, bukan sebagai boneka yang macet.
+    MusicTrack track;
+    bool ketemu = false;
+    for (int percobaan = 1; percobaan <= kResolvePercobaanMaks && !stop_requested_.load(); ++percobaan) {
+        if (ResolveTrack(judul, penyanyi, track)) {
+            ketemu = true;
+            break;
+        }
+        ESP_LOGW(TAG, "Percobaan %d dari %d mencari lagu gagal", percobaan, kResolvePercobaanMaks);
+        // Jeda sebelum mencoba lagi supaya server sempat selesai menyiapkan
+        // lagu yang sama, yang pada percobaan berikutnya langsung tersedia dari
+        // singgahannya.
+        for (int menunggu = 0; menunggu < kResolveJedaUlangMs && !stop_requested_.load();
+             menunggu += 100) {
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+    }
+
+    if (!ketemu) {
+        ESP_LOGW(TAG, "Lagu %s tidak dapat disiapkan setelah %d percobaan",
+                 judul.c_str(), kResolvePercobaanMaks);
+        ring_.Close();
+        return;
+    }
+
+    std::string stream_url = track.stream_url;
+    {
+        std::lock_guard<std::mutex> lock(track_mutex_);
+        track_ = track;
+    }
+    ESP_LOGI(TAG, "Lagu siap diunduh: %s - %s", track.title.c_str(), track.artist.c_str());
 
     auto network = Board::GetInstance().GetNetwork();
     if (network == nullptr) {
@@ -796,70 +992,32 @@ void MusicPlayer::RunDecoder() {
         ESP_LOGI(TAG, "Decoder MP3 siap digunakan");
     }
 
-    // Musik hanya boleh terdengar saat perangkat menganggur, kalau tidak lagu
-    // akan masuk ke mikrofon dan dikirim ke server sebagai suara pengguna.
+    if (!TungguPerangkatMenganggur()) {
+        ring_.Close();
+        return;
+    }
+    ESP_LOGI(TAG, "Perangkat menganggur, menunggu lagu siap");
+
+    // Nada tunggu berbunyi selama lagu dicari dan diunduh.
     //
-    // Saat tool dipanggil, AI masih membacakan jawabannya. Setelah jawaban
-    // selesai perangkat berpindah ke status mendengarkan, bukan menganggur,
-    // jadi sesi percakapan harus ditutup dulu secara eksplisit.
-    int waited_ms = 0;
-    int drained_ms = 0;
-    bool end_requested = false;
-    while (!stop_requested_.load() && waited_ms < kIdleWaitMs) {
-        auto state = app.GetDeviceState();
-        if (state == kDeviceStateIdle) {
-            break;
-        }
-        if (state == kDeviceStateConnecting) {
-            // Status ini hanya muncul saat pengguna membangunkan AI lagi.
-            ESP_LOGI(TAG, "Pengguna memanggil AI, permintaan musik dibatalkan");
-            stop_requested_ = true;
-            break;
-        }
-
-        // Hanya status mendengarkan yang dipakai sebagai tanda jawaban selesai.
-        // Status berbicara tidak dipakai karena antrean audio bisa sesaat kosong
-        // di sela paket TTS, dan menutup sesi di titik itu memotong kalimat AI.
-        //
-        // Kesiapan diperiksa lewat WaitForPlaybackQueueEmpty, bukan IsIdle().
-        // IsIdle() ikut memeriksa antrean encode mikrofon yang praktis tidak
-        // pernah kosong selama perangkat mendengarkan, sehingga syaratnya tidak
-        // akan pernah terpenuhi dan musik selalu gagal setelah batas tunggu.
-        bool playback_drained = audio_service.WaitForPlaybackQueueEmpty(0);
-        if (state == kDeviceStateListening && playback_drained && waited_ms >= kMinAnswerGraceMs) {
-            drained_ms += 100;
-        } else {
-            drained_ms = 0;
-        }
-
-        if (drained_ms >= kAnswerDrainedStableMs && !end_requested) {
-            end_requested = true;
-            app.EndConversation();
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(100));
-        waited_ms += 100;
-    }
-    if (stop_requested_.load()) {
-        ESP_LOGW(TAG, "Pemutaran dibatalkan sebelum mulai");
-        ring_.Close();
-        return;
-    }
-    if (app.GetDeviceState() != kDeviceStateIdle) {
-        ESP_LOGW(TAG, "Perangkat tidak kembali menganggur dalam %d ms (state=%d), musik dibatalkan",
-            kIdleWaitMs, static_cast<int>(app.GetDeviceState()));
-        ring_.Close();
-        return;
-    }
-    ESP_LOGI(TAG, "Perangkat menganggur, mulai memutar musik");
-
-    // Isi buffer awal supaya lagu tidak putus-putus pada detik pertama.
+    // Tanpa itu boneka terdengar membisu begitu saja, dan tidak ada cara
+    // membedakan "sedang menyiapkan" dari "macet". Itulah yang paling sering
+    // ditanyakan ketika ada gangguan.
+    MulaiNadaTunggu();
     while (!stop_requested_.load() && !ring_.closed() && ring_.Size() < kPrebufferBytes) {
+        LanjutkanNadaTunggu();
         vTaskDelay(pdMS_TO_TICKS(50));
     }
+    HentikanNadaTunggu();
     ESP_LOGI(TAG, "Buffer awal terisi %u byte", static_cast<unsigned>(ring_.Size()));
     if (stop_requested_.load()) {
         ring_.Close();
+        return;
+    }
+    if (ring_.Size() == 0) {
+        // Tugas jaringan menutup penyangga tanpa satu byte pun, artinya lagunya
+        // memang tidak berhasil disiapkan sama sekali.
+        ESP_LOGW(TAG, "Lagu tidak jadi diputar, tidak ada data yang diterima");
         return;
     }
 
@@ -893,10 +1051,16 @@ void MusicPlayer::RunDecoder() {
     std::vector<int16_t> pending;
     pending.reserve(frame_samples * 2);
 
-    // Jangan biarkan suara dari speaker dikenali keliru sebagai "hai hai".
-    // Pengguna tetap dapat membangunkan Riri melalui foil tangan yang memang
-    // dirancang sebagai kontrol saat musik sedang diputar.
-    audio_service.EnableWakeWordDetection(false);
+    // Deteksi kata pemicu tetap menyala selama lagu diputar supaya lagu dapat
+    // dihentikan dengan suara, bukan hanya dengan menyentuh foil.
+    //
+    // Sebelumnya deteksi dimatikan agar suara dari pengeras suara tidak
+    // dikenali keliru sebagai "hai hai". Akibatnya boneka tuli total selama
+    // lagu berbunyi, dan satu-satunya cara menghentikannya adalah menyentuhnya.
+    // Salah kenal sesekali jauh lebih ringan daripada itu: akibat terburuknya
+    // lagu berhenti, yang justru satu-satunya hal yang biasanya diinginkan
+    // pengguna pada saat itu.
+    audio_service.EnableWakeWordDetection(audio_service.IsAfeWakeWord());
     streaming_ = true;
     // Beri tahu lampu indikator supaya warnanya berubah menjadi ungu.
     if (auto led = Board::GetInstance().GetLed()) {

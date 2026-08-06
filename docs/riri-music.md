@@ -81,8 +81,19 @@ dikirim sebagai MP3 mono 24 kHz sekitar 47 kbps. Laju cuplik itu sama dengan
 stereo ke mono dan tidak perlu mengubah laju cuplik sama sekali.
 
 **Kebutuhan jaringan turun jauh.** Dari sekitar 40 KB per detik untuk MP3 320
-kbps stereo menjadi sekitar 6 KB per detik, sehingga penyangga 192 KB setara
-lebih dari tiga puluh detik audio.
+kbps stereo menjadi sekitar 6 KB per detik.
+
+**Lagunya dimuat seluruhnya ke PSRAM sebelum diputar.** Penyangganya 4 MB,
+sedangkan lagu sepuluh menit pun di bawah 3,5 MB. Inilah yang paling menentukan
+pada Wi-Fi yang buruk: begitu nada pertama berbunyi, jaringan sudah tidak
+dipakai lagi sama sekali, sehingga gangguan jaringan setelah itu tidak mungkin
+terdengar. Sebelumnya penyangganya hanya 192 KB dan sisa lagu tetap harus
+mengalir selama pemutaran.
+
+**Unduhan baru dimulai setelah Riri selesai bicara.** Mengunduh ratusan kilobyte
+bersamaan dengan penguraian TTS membuat paket suara terlambat sampai ke antrean
+pemutaran, dan itulah sebabnya suara AI dulu selalu patah-patah tepat ketika
+hendak memutar lagu. Jedanya ditutupi nada tunggu.
 
 **Ada penjaga isi ulang penyangga.** Bila data menipis di bawah 6 KB, dekoder
 berhenti sejenak dan menunggu sampai penyangga terisi 24 KB lagi. Antrean
@@ -107,7 +118,38 @@ Nilai nol berarti aliran lancar sepanjang lagu.
   `opus_codec`, `audio_output`, dan `audio_input`, sehingga musik tidak pernah
   merebut CPU dari jalur audio waktu nyata.
 - Pengalihan HTTP diikuti sampai empat lompatan.
-- Pencarian dibatasi 10 detik supaya server MCP tidak menyerah menunggu.
+
+## Kenapa Pencariannya di Latar Belakang
+
+Alat `self.music.play` menjawab seketika bahwa lagunya sedang dicari, lalu
+pencarian dan pengunduhan berjalan sesudahnya.
+
+Sebabnya, server MCP menyerah menunggu jawaban alat sekitar sepuluh detik,
+sedangkan menyiapkan lagu baru memerlukan belasan sampai tiga puluhan detik.
+Ketika pencarian masih menahan jawaban alat, AI selalu terlanjur berkata "gagal
+karena waktu habis" walaupun servernya sedang menyiapkan lagunya dengan baik,
+dan lagu yang sudah jadi itu terbuang percuma.
+
+Karena tidak ada lagi yang menunggu dalam diam, pencarian kini diulang sampai
+tiga kali. Percobaan kedua biasanya langsung berhasil, sebab server sudah
+selesai menyiapkan lagu yang sama dan tinggal mengambilnya dari singgahan.
+
+## Nada Tunggu
+
+Selama lagu disiapkan, boneka membunyikan `loading.ogg` berulang. Nada itu
+berhenti begitu lagunya siap, dan antrean pemutaran dikosongkan supaya sisanya
+tidak menimpa awal lagu. Nada tunggu juga berhenti sendiri bila pengguna
+memanggil AI di tengah penantian.
+
+Tanpa nada tunggu, boneka terdengar membisu begitu saja dan tidak ada cara
+membedakan "sedang menyiapkan" dari "macet".
+
+Berkas nada tunggu berada di `main/assets/tambahan/loading.ogg` dan ikut masuk
+ke `generated_assets.bin`. Seluruh isi `assets/tambahan` terdaftar sebagai
+ketergantungan CMake, jadi menambah berkas baru di sana memang memicu
+pembangunan ulang partisi aset. Tanpa pendaftaran itu, pembangunan tetap
+berhasil dan firmware tetap terpasang, tetapi berkas barunya diam-diam tidak
+ikut dan baru ketahuan saat perangkat melaporkan asetnya tidak ditemukan.
 
 ## Aturan Interaksi
 
@@ -124,12 +166,18 @@ bukan `IsIdle()`. `IsIdle()` ikut memeriksa antrean encode mikrofon yang praktis
 tidak pernah kosong selama perangkat mendengarkan, sehingga syaratnya tidak akan
 pernah terpenuhi dan lagu selalu gagal tepat setelah batas tunggu.
 
-Deteksi kata pemicu dimatikan selama lagu diputar supaya suara pengeras suara
-tidak salah dikenali sebagai "hai hai". Untuk menghentikan lagu, sentuh foil
-tangan boneka.
+Deteksi kata pemicu tetap menyala selama lagu diputar, sehingga lagu dapat
+dihentikan dengan mengucapkan "hai hai" maupun dengan menyentuh foil tangan.
 
-Lagu berhenti otomatis saat foil disentuh, saat AI memanggil `self.music.stop`,
-saat perangkat keluar dari status menganggur, atau saat berkas lagu selesai.
+Sebelumnya deteksi dimatikan agar suara dari pengeras suara tidak salah dikenali
+sebagai kata pemicu. Akibatnya boneka tuli total selama lagu berbunyi, dan
+satu-satunya cara menghentikannya adalah menyentuhnya. Salah kenal sesekali jauh
+lebih ringan daripada itu: akibat terburuknya lagu berhenti, dan itu justru
+satu-satunya hal yang biasanya diinginkan pengguna pada saat itu.
+
+Lagu berhenti otomatis saat foil disentuh, saat kata pemicu terdengar, saat AI
+memanggil `self.music.stop`, saat perangkat keluar dari status menganggur, atau
+saat berkas lagu selesai.
 
 ## Pengaturan
 

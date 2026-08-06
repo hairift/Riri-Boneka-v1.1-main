@@ -1212,6 +1212,16 @@ function(build_default_assets_bin)
     # Add default assets extra files if defined
     if(DEFAULT_ASSETS_EXTRA_FILES)
         list(APPEND BUILD_ARGS "--extra_files" "${DEFAULT_ASSETS_EXTRA_FILES}")
+        # Berkas tambahan wajib ikut terdaftar sebagai ketergantungan.
+        #
+        # Tanpa ini, menambahkan berkas suara baru ke assets/tambahan tidak
+        # memicu pembangunan ulang partisi aset. Pembangunannya tetap berhasil,
+        # firmware tetap terpasang, tetapi berkas barunya diam-diam tidak ikut
+        # dan baru ketahuan saat perangkat melaporkan asetnya tidak ditemukan.
+        file(GLOB_RECURSE DEFAULT_ASSETS_EXTRA_FILE_LIST CONFIGURE_DEPENDS
+            "${DEFAULT_ASSETS_EXTRA_FILES}/*"
+        )
+        list(APPEND DEFAULT_ASSETS_DEPENDENCIES ${DEFAULT_ASSETS_EXTRA_FILE_LIST})
     endif()
 
     list(APPEND BUILD_ARGS "--esp_sr_model_path" "${ESP_SR_MODEL_PATH}")

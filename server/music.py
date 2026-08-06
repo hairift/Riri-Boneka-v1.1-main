@@ -89,14 +89,16 @@ JUMLAH_HASIL_CARI = 20
 
 # Batas waktu seluruh penyiapan lagu, dari pencarian sampai berkas siap.
 #
-# Firmware menunggu jawaban ini sambil AI terdiam, jadi angkanya harus sedikit
-# di bawah batas waktu firmware. Lagu yang pernah diminta dijawab seketika dari
-# singgahan, jadi batas ini hanya terasa pada lagu yang benar-benar baru.
-BATAS_SIAPKAN_DETIK = 32.0
+# Firmware tidak lagi menahan jawaban AI selama penyiapan berlangsung, jadi
+# batas ini boleh longgar. Yang menunggu hanyalah nada tunggu di boneka, dan
+# menyerah terlalu cepat justru lebih buruk: pengguna tahu lagunya ada, tetapi
+# boneka bilang tidak ada.
+#
+# Lagu yang pernah diminta dijawab seketika dari singgahan, jadi batas ini hanya
+# terasa pada lagu yang benar-benar baru.
+BATAS_SIAPKAN_DETIK = 100.0
 # Banyaknya hasil yang benar-benar diunduh sebelum berpindah ke kueri berikutnya.
-# Bila tiga hasil teratas yang sudah lolos penyaringan pun gagal diunduh,
-# kuerinya yang bermasalah, bukan hasilnya.
-BATAS_KANDIDAT_PER_KUERI = 3
+BATAS_KANDIDAT_PER_KUERI = 4
 
 
 def _slug(nilai: str) -> str:
