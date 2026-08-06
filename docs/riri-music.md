@@ -164,6 +164,12 @@ bahwa lagunya sudah siap sampai belasan detik kemudian.
 dipotong di tengah. Tanpa itu, nada tunggu tetap mengantre sampai habis dan
 terdengar menimpa awal lagu maupun suara reaksi sentuhan.
 
+Penghentiannya memakai `AudioService::ResetDecoder`, bukan `ClearPlaybackQueue`.
+`ClearPlaybackQueue` hanya mengosongkan antrean pemutaran, sedangkan nada tunggu
+masih menyisakan paket di antrean dekode yang memuat sampai 2,4 detik audio.
+Paket itu tetap terurai dan berbunyi menimpa awal lagu, sehingga lagunya
+terdengar bertabrakan dengan nada tunggu dan seolah patah-patah.
+
 Sentuhan foil menghentikan nada tunggu lebih dulu, baru memainkan suara
 reaksinya, sehingga keduanya tidak pernah bertumpuk.
 
@@ -192,18 +198,21 @@ bukan `IsIdle()`. `IsIdle()` ikut memeriksa antrean encode mikrofon yang praktis
 tidak pernah kosong selama perangkat mendengarkan, sehingga syaratnya tidak akan
 pernah terpenuhi dan lagu selalu gagal tepat setelah batas tunggu.
 
-Deteksi kata pemicu tetap menyala selama lagu diputar, sehingga lagu dapat
-dihentikan dengan mengucapkan "hai hai" maupun dengan menyentuh foil tangan.
+Deteksi kata pemicu dimatikan selama lagu diputar.
 
-Sebelumnya deteksi dimatikan agar suara dari pengeras suara tidak salah dikenali
-sebagai kata pemicu. Akibatnya boneka tuli total selama lagu berbunyi, dan
-satu-satunya cara menghentikannya adalah menyentuhnya. Salah kenal sesekali jauh
-lebih ringan daripada itu: akibat terburuknya lagu berhenti, dan itu justru
-satu-satunya hal yang biasanya diinginkan pengguna pada saat itu.
+Papan ini tidak punya peredam gema, jadi mikrofon mendengar lagunya sendiri dan
+bagian lagu mana pun dapat dikenali keliru sebagai "hai hai". Pada pengujian,
+satu potongan lagu bernilai 0,162 sementara kata pemicu asli pernah bernilai
+0,139, sehingga keduanya memang tidak dapat dipisahkan oleh ambang mana pun.
+Ketika deteksi dibiarkan menyala, lagu berhenti sendiri di tengah tanpa ada yang
+memintanya.
 
-Lagu berhenti otomatis saat foil disentuh, saat kata pemicu terdengar, saat AI
-memanggil `self.music.stop`, saat perangkat keluar dari status menganggur, atau
-saat berkas lagu selesai.
+Untuk menghentikan lagu, sentuh bagian mana pun dari boneka. Menyentuh foil
+tangan sekaligus membangunkan AI, sehingga percakapan dapat dilanjutkan seperti
+biasa.
+
+Lagu berhenti otomatis saat foil disentuh, saat AI memanggil `self.music.stop`,
+saat perangkat keluar dari status menganggur, atau saat berkas lagu selesai.
 
 ## Pengaturan
 

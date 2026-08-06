@@ -586,8 +586,11 @@ std::string MusicPlayer::Play(const std::string& song, const std::string& artist
     answer += ". ";
     // Jawaban ini dibacakan AI, jadi bentuknya kalimat untuk pengguna, bukan
     // laporan teknis. Nada tunggu memberi tahu bahwa penyiapan sedang berjalan.
+    //
+    // Kata pemicu tidak disebut sebagai cara berhenti, karena selama lagu
+    // diputar deteksinya memang dimatikan supaya lagu tidak berhenti sendiri.
     answer += "Akan terdengar nada tunggu sebentar, lalu lagunya mulai sendiri. "
-              "Ucapkan hai hai atau sentuh tangan Riri untuk menghentikannya.";
+              "Sentuh bagian mana pun dari Riri untuk menghentikan lagunya.";
     return answer;
 }
 
@@ -822,7 +825,14 @@ void MusicPlayer::HentikanNadaTunggu() {
     // menimpa awal lagu maupun suara reaksi sentuhan.
     xEventGroupWaitBits(event_group_, kNadaTungguTaskDone, pdFALSE, pdTRUE,
                         pdMS_TO_TICKS(kNadaTungguBerhentiTimeoutMs));
-    Application::GetInstance().GetAudioService().ClearPlaybackQueue();
+
+    // ResetDecoder, bukan ClearPlaybackQueue.
+    //
+    // ClearPlaybackQueue hanya mengosongkan antrean pemutaran, sedangkan nada
+    // tunggu masih menyisakan paket di antrean dekode yang memuat sampai 2,4
+    // detik audio. Paket itu tetap terurai dan berbunyi menimpa awal lagu,
+    // sehingga lagunya terdengar bertabrakan dengan nada tunggu.
+    Application::GetInstance().GetAudioService().ResetDecoder();
 }
 
 bool MusicPlayer::TungguPerangkatMenganggur() {
@@ -1120,16 +1130,19 @@ void MusicPlayer::RunDecoder() {
     std::vector<int16_t> pending;
     pending.reserve(frame_samples * 2);
 
-    // Deteksi kata pemicu tetap menyala selama lagu diputar supaya lagu dapat
-    // dihentikan dengan suara, bukan hanya dengan menyentuh foil.
+    // Deteksi kata pemicu dimatikan selama lagu diputar.
     //
-    // Sebelumnya deteksi dimatikan agar suara dari pengeras suara tidak
-    // dikenali keliru sebagai "hai hai". Akibatnya boneka tuli total selama
-    // lagu berbunyi, dan satu-satunya cara menghentikannya adalah menyentuhnya.
-    // Salah kenal sesekali jauh lebih ringan daripada itu: akibat terburuknya
-    // lagu berhenti, yang justru satu-satunya hal yang biasanya diinginkan
-    // pengguna pada saat itu.
-    audio_service.EnableWakeWordDetection(audio_service.IsAfeWakeWord());
+    // Papan ini tidak punya peredam gema, jadi mikrofon mendengar lagunya
+    // sendiri dan bagian lagu mana pun dapat dikenali keliru sebagai "hai hai".
+    // Pada pengujian, satu potongan lagu bernilai 0,162 sementara kata pemicu
+    // asli pernah bernilai 0,139, jadi keduanya memang tidak dapat dipisahkan
+    // oleh ambang mana pun. Akibatnya lagu berhenti sendiri di tengah tanpa ada
+    // yang memintanya.
+    //
+    // Untuk menghentikan lagu, sentuh foil mana pun. Menyentuh foil tangan
+    // sekaligus membangunkan AI, sehingga permintaan seperti "berhentikan
+    // musik" tetap dapat disampaikan lewat alat self.music.stop.
+    audio_service.EnableWakeWordDetection(false);
     streaming_ = true;
     // Beri tahu lampu indikator supaya warnanya berubah menjadi ungu.
     if (auto led = Board::GetInstance().GetLed()) {
