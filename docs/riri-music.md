@@ -32,6 +32,7 @@ penyanyi".
 Pengguna -> AI -> self.music.play
          -> GET <server>/music/resolve?song=...&artist=...
          -> server mencari lewat YouTube Data API
+         -> server mengunduh dari YouTube, atau SoundCloud bila ditolak
          -> server mentranskode ke MP3 mono 24 kHz
          -> {"title","artist","audio_url"}
          -> firmware mengunduh audio_url
@@ -39,18 +40,49 @@ Pengguna -> AI -> self.music.play
          -> dekode MP3 -> antrean playback -> I2S -> MAX98357
 ```
 
+## Dari Mana Lagunya Diambil
+
+Pencarian selalu memakai YouTube Data API karena hasilnya paling tepat, terutama
+untuk lagu Indonesia. Pengunduhannya punya dua jalur.
+
+**YouTube** dicoba lebih dulu, dengan beberapa jenis klien pemutar berurutan.
+
+**SoundCloud** dipakai bila semua percobaan YouTube ditolak. Ini bukan
+kemewahan, melainkan keharusan saat server berjalan di Cloud Run: YouTube
+memperlakukan alamat pusat data berbeda dari alamat rumahan, dan menolak setiap
+permintaan dengan pesan "Sign in to confirm you're not a bot". Pesan itu muncul
+untuk semua jenis klien dan tidak dapat dihindari tanpa memasukkan berkas cookie
+akun YouTube ke server, yang berisiko membuat akunnya diblokir dan tidak boleh
+ikut tersimpan di repositori publik.
+
+Lagu yang sama dari SoundCloud biasanya diunggah ulang oleh pengguna lain, jadi
+judulnya tepat tetapi nama pengunggahnya bukan penyanyi aslinya. Untuk boneka
+ini hasilnya tidak terdengar berbeda.
+
+SoundCloud juga menjadi jaring pengaman ketika kuota YouTube Data API habis,
+karena pencariannya sama sekali tidak memerlukan kunci API.
+
+Log memberi tahu jalur mana yang dipakai:
+
+```text
+I riri.music: Lagu berhasil diunduh lewat soundcloud
+```
+
+Bila server dijalankan di komputer sendiri lewat Docker, alamatnya adalah alamat
+rumahan sehingga jalur YouTube langsung berhasil dan SoundCloud tidak terpakai.
+
 ## Kenapa Suaranya Tidak Patah-Patah
 
 Tiga hal bekerja bersama.
 
 **Server mentranskode ke format yang persis dibutuhkan perangkat.** Berkas
-dikirim sebagai MP3 mono 24 kHz sekitar 96 kbps. Laju cuplik itu sama dengan
+dikirim sebagai MP3 mono 24 kHz sekitar 47 kbps. Laju cuplik itu sama dengan
 `AUDIO_OUTPUT_SAMPLE_RATE` codec boneka, sehingga ESP32 tidak perlu mencampur
 stereo ke mono dan tidak perlu mengubah laju cuplik sama sekali.
 
 **Kebutuhan jaringan turun jauh.** Dari sekitar 40 KB per detik untuk MP3 320
-kbps stereo menjadi sekitar 12 KB per detik, sehingga penyangga 192 KB setara
-belasan detik audio.
+kbps stereo menjadi sekitar 6 KB per detik, sehingga penyangga 192 KB setara
+lebih dari tiga puluh detik audio.
 
 **Ada penjaga isi ulang penyangga.** Bila data menipis di bawah 6 KB, dekoder
 berhenti sejenak dan menunggu sampai penyangga terisi 24 KB lagi. Antrean
@@ -114,7 +146,7 @@ saat perangkat keluar dari status menganggur, atau saat berkas lagu selesai.
 | `URL server musik belum diisi di menuconfig` | Isi `CONFIG_RIRI_SERVER_URL` |
 | `Server musik ... tidak menjawab` | Server belum jalan, alamat salah, atau instance Cloud Run sedang dibangunkan |
 | `Server musik menolak permintaan` | `CONFIG_RIRI_SERVER_SECRET` berbeda dengan `RIRI_SECRET_KEY` di server |
-| `Server musik tidak menemukan lagu` | Judul terlalu pendek atau salah dengar. Sebutkan judul dan penyanyi lebih lengkap |
+| `Server musik tidak menemukan lagu` | Judul terlalu pendek atau salah dengar. Sebutkan judul dan penyanyi lebih lengkap. Bila log server memuat `Unduhan lagu gagal lewat` pada semua sumber, lagunya memang tidak ada di kedua sumber |
 | `Data musik menipis, mengisi ulang penyangga` | Wi-Fi tersendat. Sesekali wajar; sering berarti sinyal lemah |
 | `Perangkat menganggur, mulai memutar musik` | Normal, lagu segera terdengar |
 | `Gagal membuka dekoder MP3` | Berkas bukan MP3. Pastikan server memakai transkode bawaan |

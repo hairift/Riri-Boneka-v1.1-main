@@ -29,7 +29,7 @@ ENV HF_HOME=/app/.cache/huggingface \
 RUN python -c "\
 from sentence_transformers import SentenceTransformer, CrossEncoder; \
 SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'); \
-CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2'); \
+CrossEncoder('cross-encoder/mmarco-mMiniLMv2-L12-H384-v1'); \
 print('model siap')"
 
 # Sistem berkas Cloud Run bersifat sementara dan berada di memori, jadi

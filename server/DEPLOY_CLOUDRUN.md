@@ -114,16 +114,23 @@ Bila muncul pertanyaan `Allow unauthenticated invocations`, jawab **y**.
 gcloud run services describe riri-server --region asia-southeast2 --format="value(status.url)"
 ```
 
+Layanan proyek ini sudah berjalan di alamat berikut, jadi langkah ini
+hanya perlu bila Anda menerapkan ulang dengan nama proyek sendiri:
+
+```text
+https://riri-server-1023596067013.asia-southeast2.run.app
+```
+
 Hasilnya berbentuk:
 
 ```text
-https://riri-server-xxxxxxxxxx-et.a.run.app
+https://riri-server-1023596067013.asia-southeast2.run.app
 ```
 
 Uji langsung dari peramban:
 
 ```text
-https://riri-server-xxxxxxxxxx-et.a.run.app/health
+https://riri-server-1023596067013.asia-southeast2.run.app/health
 ```
 
 Jawaban yang benar:
@@ -179,7 +186,7 @@ Ucapkan "hai hai" lalu coba:
 Di monitor akan terlihat:
 
 ```text
-I MusicPlayer: Meminta lagu ke server musik: https://riri-server-....run.app/music/resolve?...
+I MusicPlayer: Meminta lagu ke server musik: https://riri-server-1023596067013.asia-southeast2.run.app/music/resolve?...
 I MusicPlayer: Lagu dari server musik: Hati-Hati di Jalan - Tulus
 I MusicPlayer: Perangkat menganggur, mulai memutar musik
 ```

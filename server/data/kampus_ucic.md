@@ -1,8 +1,3 @@
-# Basis Pengetahuan Universitas Catur Insan Cendekia
-
-Berkas ini dihasilkan dari main/campus_data.cc supaya server RAG dan
-firmware memakai sumber data kampus yang sama persis.
-
 # Prospek Karir S1 Teknik Informatika
 
 Kategori: prospek_karir

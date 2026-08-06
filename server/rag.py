@@ -295,20 +295,33 @@ class IndeksKampus:
         terbaik = sorted(gabungan.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
         return [(self.potongan[i], nilai) for i, nilai in terbaik]
 
-    def peringkat_ulang(self, kueri: str, kandidat: list[tuple[Potongan, float]]) -> list[tuple[Potongan, float]]:
-        """Pemeringkatan ulang wajib memakai cross-encoder."""
+    def peringkat_ulang(self, kueri: list[str] | str,
+                        kandidat: list[tuple[Potongan, float]]) -> list[tuple[Potongan, float]]:
+        """Pemeringkatan ulang wajib memakai cross-encoder.
+
+        Menerima beberapa bentuk kueri dan memakai skor tertinggi di antaranya.
+        Ini diperlukan karena dokumen tidak konsisten: sebagian menyebut kampus
+        dengan singkatan dan sebagian dengan nama panjang, sedangkan penanya
+        bebas memakai bentuk yang mana pun. Menilai kedua bentuk membuat
+        keduanya sama-sama terjawab tanpa harus menyeragamkan isi dokumen.
+        """
         if not kandidat:
             return []
+        bentuk = [kueri] if isinstance(kueri, str) else [q for q in kueri if q]
+        if not bentuk:
+            return kandidat
         try:
             model = self.reranker()
-            pasangan = [(kueri, p.teks) for p, _ in kandidat]
-            skor = model.predict(pasangan)
-            # Skor cross-encoder berupa logit, diubah ke rentang nol sampai satu
-            # supaya ambang kecukupan mudah dibaca manusia.
-            hasil = [
-                (kandidat[i][0], 1.0 / (1.0 + math.exp(-float(skor[i]))))
-                for i in range(len(kandidat))
-            ]
+            tertinggi = [0.0] * len(kandidat)
+            for q in bentuk:
+                skor = model.predict([(q, p.teks) for p, _ in kandidat])
+                for i, nilai in enumerate(skor):
+                    # Skor cross-encoder berupa logit, diubah ke rentang nol
+                    # sampai satu supaya ambang kecukupan mudah dibaca manusia.
+                    sig = 1.0 / (1.0 + math.exp(-float(nilai)))
+                    if sig > tertinggi[i]:
+                        tertinggi[i] = sig
+            hasil = [(kandidat[i][0], tertinggi[i]) for i in range(len(kandidat))]
             hasil.sort(key=lambda kv: kv[1], reverse=True)
             return hasil
         except Exception as exc:
@@ -351,7 +364,11 @@ def riwayat(sesi: str) -> list[str]:
 class Keadaan:
     kueri: str
     sesi: str = ""
-    kueri_tulis_ulang: str = ""
+    # Kueri untuk tahap pencarian: kueri asli ditambah perluasan singkatan.
+    kueri_cari: str = ""
+    # Kueri untuk tahap pemeringkatan ulang: kalimat alami, ditambah bentuk
+    # yang singkatannya dipendekkan bila memang ada.
+    kueri_peringkat: list[str] = field(default_factory=list)
     rute: str = "kampus"
     kandidat: list[tuple[Potongan, float]] = field(default_factory=list)
     terpilih: list[tuple[Potongan, float]] = field(default_factory=list)
@@ -391,31 +408,60 @@ def simpul_tulis_ulang(k: Keadaan) -> Keadaan:
 
     Transkrip suara sering memendekkan atau salah dengar. Penulisan ulang ini
     membuat pencarian tetap mengena tanpa perlu model bahasa besar.
+
+    Hasilnya dua kueri, bukan satu, karena kedua tahap berikutnya menginginkan
+    bentuk yang berlawanan:
+
+    - Pencarian ingin kosakata seluas mungkin. Dokumen menulis prodi kadang
+      sebagai singkatan dan kadang sebagai nama panjang, jadi keduanya perlu
+      ada agar BM25 maupun vektor sama-sama menemukannya.
+    - Pemeringkat ulang justru ingin kalimat alami. Ia menilai kecocokan
+      pertanyaan dengan potongan, sehingga kueri yang penuh perluasan menjadi
+      kalimat janggal yang skornya anjlok. "siapa rektor ucic" dinilai 0,98
+      terhadap potongan yang benar, sementara bentuk perluasannya hanya 0,01.
     """
-    teks = k.kueri.lower()
+    teks = k.kueri.strip()
+    rendah = teks.lower()
+
+    # Kumpulkan perluasan sebagai tambahan, bukan pengganti, supaya kata asli
+    # yang dipakai dokumen tidak ikut hilang.
+    perluasan: list[str] = []
     for pendek, panjang in SINGKATAN.items():
-        teks = re.sub(rf"\b{pendek}\b", panjang, teks)
+        if re.search(rf"\b{pendek}\b", rendah) and panjang not in rendah:
+            perluasan.append(panjang)
 
     sebelumnya = riwayat(k.sesi)
     if sebelumnya and len(teks.split()) <= 4:
         # Pertanyaan susulan yang sangat pendek diberi konteks sebelumnya,
         # misalnya "kalau yang semester dua?" setelah bertanya mata kuliah.
         teks = sebelumnya[-1] + " " + teks
+        rendah = teks.lower()
 
-    k.kueri_tulis_ulang = teks.strip()
+    # Bentuk kedua: nama panjang dipendekkan kembali menjadi singkatan, supaya
+    # pertanyaan "rektor Universitas Catur Insan Cendekia" tetap cocok dengan
+    # potongan yang menulisnya "Rektor UCIC".
+    dipendekkan = rendah
+    for pendek, panjang in SINGKATAN.items():
+        if panjang in dipendekkan:
+            dipendekkan = dipendekkan.replace(panjang, pendek)
+
+    k.kueri_peringkat = [teks]
+    if dipendekkan != rendah:
+        k.kueri_peringkat.append(dipendekkan)
+    k.kueri_cari = " ".join([rendah] + perluasan).strip()
     return k
 
 
 def simpul_cari(k: Keadaan) -> Keadaan:
     cfg = pengaturan()
     INDEKS.bangun()
-    k.kandidat = INDEKS.cari_hibrida(k.kueri_tulis_ulang or k.kueri, cfg.retrieve_top_k)
+    k.kandidat = INDEKS.cari_hibrida(k.kueri_cari or k.kueri, cfg.retrieve_top_k)
     return k
 
 
 def simpul_peringkat(k: Keadaan) -> Keadaan:
     cfg = pengaturan()
-    diperingkat = INDEKS.peringkat_ulang(k.kueri_tulis_ulang or k.kueri, k.kandidat)
+    diperingkat = INDEKS.peringkat_ulang(k.kueri_peringkat or k.kueri, k.kandidat)
     k.terpilih = diperingkat[: cfg.rerank_top_k]
     return k
 
@@ -434,11 +480,14 @@ def simpul_koreksi(k: Keadaan) -> Keadaan:
 
     if k.catatan != "diulang":
         k.catatan = "diulang"
-        # Percobaan kedua memakai kata kunci inti saja.
-        inti = " ".join(t for t in _tokenisasi(k.kueri_tulis_ulang or k.kueri) if len(t) > 3)
+        # Percobaan kedua melebarkan pencarian dengan kata kunci inti saja,
+        # tetapi tetap memeringkat memakai kalimat aslinya dengan alasan yang
+        # sama seperti pada simpul_tulis_ulang.
+        inti = " ".join(t for t in _tokenisasi(k.kueri_cari or k.kueri) if len(t) > 3)
         if inti:
             k.kandidat = INDEKS.cari_hibrida(inti, cfg.retrieve_top_k)
-            k.terpilih = INDEKS.peringkat_ulang(inti, k.kandidat)[: cfg.rerank_top_k]
+            k.terpilih = INDEKS.peringkat_ulang(
+                k.kueri_peringkat or k.kueri, k.kandidat)[: cfg.rerank_top_k]
             tertinggi = k.terpilih[0][1] if k.terpilih else 0.0
 
     k.cukup = tertinggi >= cfg.rerank_min_score
@@ -492,7 +541,7 @@ def simpul_refleksi(k: Keadaan) -> Keadaan:
         k.cukup = False
         return k
 
-    kata = [t for t in _tokenisasi(k.kueri_tulis_ulang or k.kueri) if len(t) > 3]
+    kata = [t for t in _tokenisasi(k.kueri_cari or k.kueri) if len(t) > 3]
     if kata:
         rendah = k.jawaban.lower()
         cocok = sum(1 for t in kata if t in rendah)

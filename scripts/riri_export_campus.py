@@ -38,9 +38,12 @@ for ident, kategori, judul, isi, kunci in entri:
 
 tujuan = os.path.join(tujuan_dir, 'kampus_ucic.md')
 with io.open(tujuan, 'w', encoding='utf-8', newline='\n') as f:
-    f.write("# Basis Pengetahuan Universitas Catur Insan Cendekia\n\n")
-    f.write("Berkas ini dihasilkan dari main/campus_data.cc supaya server RAG dan\n")
-    f.write("firmware memakai sumber data kampus yang sama persis.\n\n")
+    # Berkas sengaja tidak diberi judul maupun keterangan pembuka.
+    #
+    # Teks pembuka ikut terpotong menjadi satu potongan tersendiri, lalu
+    # memenangkan pencarian untuk hampir semua pertanyaan kampus karena
+    # memuat nama kampusnya. Akibatnya jawaban yang dikirim ke boneka
+    # berisi keterangan berkas, bukan data yang ditanyakan.
     f.write("\n\n---\n\n".join(blok))
 
 print('ditulis:', tujuan, os.path.getsize(tujuan), 'byte')

@@ -48,7 +48,7 @@ masuk -> router -> penulisan ulang kueri -> pencarian hibrida
 | **Router** | Menentukan pertanyaan ini soal kampus atau umum |
 | **Penulisan ulang kueri** | Memperluas singkatan prodi seperti TI dan DKV, serta menyambungkan konteks pertanyaan sebelumnya dari memori |
 | **Pencarian hibrida** | Menggabungkan pencarian vektor dan BM25 memakai Reciprocal Rank Fusion |
-| **Pemeringkatan ulang** | Cross-encoder menilai ulang potongan, sifatnya wajib |
+| **Pemeringkatan ulang** | Cross-encoder multibahasa menilai ulang potongan, sifatnya wajib |
 | **Corrective RAG** | Bila skor tertinggi di bawah ambang, pencarian diulang sekali dengan kata kunci inti |
 | **Penyusunan jawaban** | Menyusun jawaban hanya dari potongan yang lolos ambang |
 | **Refleksi diri** | Menolak jawaban yang tidak memuat satu pun kata kunci pertanyaan |
@@ -60,6 +60,44 @@ Kemiripan vektor sering meleset pada hal seperti itu, sedangkan BM25 kuat pada
 pencocokan kata persis. Menggabungkan keduanya membuat pertanyaan seperti
 "dosen Algoritma dan Pemrograman 2" tidak tertukar dengan "Algoritma dan
 Pemrograman".
+
+### Kenapa pemeringkat ulangnya harus multibahasa
+
+Model `ms-marco-MiniLM-L-6-v2` yang lazim dipakai hanya dilatih untuk bahasa
+Inggris. Pada pertanyaan berbahasa Indonesia skornya menjadi nyaris acak:
+potongan berisi "Rektor UCIC" pernah dinilai 0,0001 sementara potongan tentang
+prospek karir yang tidak berhubungan dinilai 0,9891. Akibatnya pertanyaan yang
+datanya jelas ada malah dijawab `not_found`.
+
+Penggantinya, `mmarco-mMiniLMv2-L12-H384-v1`, dilatih pada empat belas bahasa
+termasuk bahasa Indonesia. Pada berkas data yang sama, pertanyaan rektor naik
+dari 0,0001 menjadi 0,97.
+
+### Kenapa kueri pencarian dan kueri pemeringkatan dibedakan
+
+Kedua tahap menginginkan bentuk kueri yang berlawanan.
+
+Pencarian ingin kosakata seluas mungkin, karena dokumen kadang menulis prodi
+sebagai singkatan dan kadang sebagai nama panjang. Karena itu kueri pencarian
+berisi kalimat asli ditambah perluasan singkatannya.
+
+Pemeringkat ulang justru menilai kecocokan pertanyaan dengan potongan, sehingga
+kalimat yang penuh perluasan menjadi janggal dan skornya anjlok. "siapa rektor
+ucic" dinilai 0,98 terhadap potongan yang benar, sedangkan bentuk perluasannya
+hanya 0,01. Karena itu pemeringkatan memakai kalimat aslinya.
+
+Pemeringkatan juga menilai bentuk kedua, yaitu kalimat yang nama panjangnya
+dipendekkan kembali menjadi singkatan, lalu memakai skor tertinggi di antara
+keduanya. Ini menutup kasus sebaliknya: penanya menyebut "Universitas Catur
+Insan Cendekia" sementara dokumen menulis "UCIC".
+
+### Kenapa berkas data tidak diberi judul pembuka
+
+Berkas `data/kampus_ucic.md` sengaja langsung dimulai dari entri pertama. Ketika
+berkas itu masih diawali judul dan keterangan, teks pembukanya ikut terpotong
+menjadi satu potongan tersendiri. Karena memuat nama kampus, potongan itu
+memenangkan pencarian untuk hampir semua pertanyaan, dan yang terkirim ke boneka
+adalah keterangan berkas, bukan data yang ditanyakan.
 
 ### Kenapa tidak pernah mengarang
 

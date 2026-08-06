@@ -54,7 +54,14 @@ class Pengaturan(BaseSettings):
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     # Model pemeringkat ulang. Wajib dipakai agar potongan yang dikirim ke
     # penjawab benar-benar yang paling relevan.
-    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    #
+    # Harus multibahasa. Model ms-marco-MiniLM sebelumnya hanya dilatih untuk
+    # bahasa Inggris, sehingga skornya nyaris acak untuk pertanyaan berbahasa
+    # Indonesia: potongan berisi "Rektor UCIC" pernah dinilai 0,0001 sementara
+    # potongan yang tidak berhubungan dinilai 0,9891. Model mMARCO dilatih pada
+    # empat belas bahasa termasuk bahasa Indonesia dan ukurannya masih cukup
+    # kecil untuk Cloud Run.
+    reranker_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # Jumlah potongan yang diambil sebelum dan sesudah pemeringkatan ulang.
     retrieve_top_k: int = 20
     rerank_top_k: int = 5

@@ -13,6 +13,7 @@ patah-patah dan kebutuhan jaringan turun menjadi sekitar 12 KB per detik.
 from __future__ import annotations
 
 import asyncio
+import glob
 import hashlib
 import logging
 import os
@@ -39,8 +40,44 @@ _gembok_peta = threading.Lock()
 
 # Laju cuplik ini harus sama dengan AUDIO_OUTPUT_SAMPLE_RATE pada firmware.
 LAJU_CUPLIK = 24000
-BITRATE = "96k"
 KANAL = 1
+
+# Mutu audio diserahkan ke skala VBR yt-dlp, bukan ke -b:a di dalam
+# --postprocessor-args. Nilai -b:a di sana tidak berpengaruh karena yt-dlp
+# menyusun argumennya sendiri untuk pengubah audio dan nilai itulah yang menang.
+#
+# Angka 5 menghasilkan sekitar 47 kbps pada 24 kHz mono, yaitu kira-kira 6 KB
+# per detik. Itu justru menguntungkan boneka: penyangga 192 KB di PSRAM setara
+# lebih dari tiga puluh detik audio, sehingga tersendatnya Wi-Fi sesaat tidak
+# terdengar sama sekali. Pada laju cuplik 24 kHz, telinga tidak dapat
+# membedakannya dari laju bit yang lebih tinggi.
+MUTU_AUDIO = "5"
+
+# Klien pemutar YouTube yang dicoba berurutan sampai ada yang berhasil.
+#
+# YouTube memperlakukan alamat pusat data berbeda dari alamat rumahan. Dari
+# Cloud Run, klien bawaan sering ditolak dengan permintaan masuk akun, padahal
+# permintaan yang sama berhasil dari komputer sendiri. Klien perangkat televisi
+# dan ponsel memakai jalur yang tidak menuntut hal itu.
+#
+# Daftar ini memang perlu ditinjau sesekali karena YouTube mengubah perilakunya
+# dari waktu ke waktu. Bila semuanya gagal, log akan memuat pesan asli dari
+# yt-dlp sehingga penyebabnya langsung terbaca.
+#
+# Urutannya berdasarkan pengujian: android_vr berhasil pada semua lagu yang
+# dicoba, klien tv menolak sebagian lagu karena dianggap terlindungi DRM, dan
+# web_safari kerap tidak menyediakan format audio saja.
+KLIEN_YOUTUBE = ("android_vr", "", "tv", "web_safari")
+
+# Saringan durasi wajib untuk hasil pencarian.
+#
+# Tanpa ini, hasil teratas SoundCloud untuk "Dusk Till Dawn" adalah unggahan
+# "One Hour Version" sepanjang 3.649 detik, dan boneka akan memutar mix satu jam
+# alih-alih lagunya. Batas bawah menyingkirkan potongan pendek dan cuplikan.
+SARINGAN_DURASI = "duration>60 & duration<600"
+# Jumlah hasil yang diperiksa sebelum menyerah. Perlu lebih dari satu justru
+# karena hasil teratas sering kali yang tersaring.
+JUMLAH_HASIL_CARI = 5
 
 
 def _slug(nilai: str) -> str:
@@ -150,9 +187,126 @@ def cari_youtube(judul: str, penyanyi: str) -> Optional[dict[str, Any]]:
         "title": utama["snippet"].get("title", judul or kata),
         "artist": utama["snippet"].get("channelTitle", penyanyi or ""),
         "url": "https://www.youtube.com/watch?v=" + utama["id"]["videoId"],
+        # Kata pencarian ikut disimpan supaya sumber cadangan dapat mencari
+        # lagu yang sama tanpa perlu memanggil YouTube lagi.
+        "kueri": kata,
     }
     cache.simpan(kunci, hasil, pengaturan().cache_ttl_music)
     return hasil
+
+
+def cari_soundcloud(judul: str, penyanyi: str) -> Optional[dict[str, Any]]:
+    """Cari lagu di SoundCloud, dipakai saat YouTube tidak dapat dihubungi.
+
+    Tidak memerlukan kunci API maupun akun, sehingga tetap bekerja ketika kuota
+    YouTube Data API habis.
+    """
+    kata = " ".join(x for x in (penyanyi.strip(), judul.strip()) if x)
+    if not kata:
+        return None
+
+    kunci = "riri:sc:" + hashlib.sha256(kata.lower().encode()).hexdigest()[:24]
+    tersimpan = cache.ambil(kunci)
+    if tersimpan is not None:
+        return tersimpan
+
+    try:
+        jalan = subprocess.run(
+            ["yt-dlp", "scsearch%d:%s" % (JUMLAH_HASIL_CARI, kata),
+             "--no-warnings", "--skip-download",
+             "--match-filter", SARINGAN_DURASI,
+             "--print", "%(id)s\t%(title)s\t%(uploader)s"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=False,
+        )
+    except subprocess.TimeoutExpired:
+        log.warning("Pencarian SoundCloud kehabisan waktu")
+        return None
+
+    baris = (jalan.stdout or b"").decode("utf-8", "replace").strip().split("\n")[0]
+    bagian = baris.split("\t")
+    if jalan.returncode != 0 or len(bagian) < 3:
+        galat = (jalan.stderr or b"").decode("utf-8", "replace").strip()
+        log.warning("Pencarian SoundCloud gagal: %s", galat[-300:] or "tanpa hasil")
+        return None
+
+    hasil = {
+        "id": bagian[0],
+        "title": bagian[1],
+        "artist": bagian[2],
+        # Tanpa alamat YouTube, _daftar_percobaan langsung memakai SoundCloud.
+        "url": "",
+        "kueri": kata,
+    }
+    cache.simpan(kunci, hasil, pengaturan().cache_ttl_music)
+    return hasil
+
+
+def _daftar_percobaan(meta: dict[str, Any]) -> list[tuple[str, str, list[str]]]:
+    """Susun urutan sumber unduhan yang akan dicoba.
+
+    Setiap butir berisi nama untuk log, alamat atau kueri untuk yt-dlp, dan
+    tambahan argumen.
+    """
+    percobaan: list[tuple[str, str, list[str]]] = []
+    if meta.get("url"):
+        for klien in KLIEN_YOUTUBE:
+            # Saringan durasi juga dipasang di sini karena hasil teratas
+            # YouTube pun kadang berupa unggahan versi satu jam.
+            tambahan = ["--match-filter", SARINGAN_DURASI]
+            if klien:
+                tambahan += ["--extractor-args", "youtube:player_client=" + klien]
+            percobaan.append(("youtube/" + (klien or "bawaan"), meta["url"], tambahan))
+
+    kueri = (meta.get("kueri") or "").strip()
+    if kueri:
+        percobaan.append((
+            "soundcloud",
+            "scsearch%d:%s" % (JUMLAH_HASIL_CARI, kueri),
+            ["--match-filter", SARINGAN_DURASI, "--max-downloads", "1"],
+        ))
+    return percobaan
+
+
+def _unduh(percobaan: list[tuple[str, str, list[str]]], sementara: str) -> bool:
+    """Coba setiap sumber berurutan sampai ada yang menghasilkan berkas MP3."""
+    for nama, alamat, tambahan in percobaan:
+        perintah = [
+            "yt-dlp", alamat,
+            "--no-playlist", "--no-warnings",
+            "-f", "bestaudio/best",
+            "-x", "--audio-format", "mp3", "--audio-quality", MUTU_AUDIO,
+            "--postprocessor-args",
+            "ffmpeg:-ac %d -ar %d" % (KANAL, LAJU_CUPLIK),
+            "-o", sementara + ".%(ext)s",
+        ] + tambahan
+        try:
+            # stderr ditangkap, bukan dibuang, karena tanpa isinya kegagalan
+            # unduhan hanya terlihat sebagai "exit status 1" di log dan
+            # penyebabnya mustahil ditebak.
+            jalan = subprocess.run(
+                perintah, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                timeout=600, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            log.warning("Unduhan lagu kehabisan waktu lewat %s", nama)
+            continue
+
+        # yt-dlp keluar dengan kode 101 setelah --max-downloads tercapai. Itu
+        # justru pertanda berhasil, jadi keberadaan berkasnya yang menentukan.
+        if os.path.exists(sementara + ".mp3"):
+            log.info("Lagu berhasil diunduh lewat %s", nama)
+            return True
+
+        galat = (jalan.stderr or b"").decode("utf-8", "replace").strip()
+        log.warning("Unduhan lagu gagal lewat %s: %s", nama, galat[-400:] or "tanpa keterangan")
+        # Berkas separuh jadi dari percobaan gagal harus dibersihkan supaya
+        # tidak tertukar dengan hasil percobaan berikutnya.
+        for sisa in glob.glob(sementara + ".*"):
+            try:
+                os.remove(sisa)
+            except OSError:
+                pass
+    return False
 
 
 def transkode(meta: dict[str, Any]) -> Optional[str]:
@@ -167,22 +321,9 @@ def transkode(meta: dict[str, Any]) -> Optional[str]:
 
         os.makedirs(DIREKTORI_CACHE, exist_ok=True)
         sementara = tujuan + ".part"
-        perintah = [
-            "yt-dlp", meta["url"],
-            "--no-playlist", "--no-warnings",
-            "-f", "bestaudio/best",
-            "-x", "--audio-format", "mp3",
-            "--postprocessor-args",
-            "ffmpeg:-ac %d -ar %d -b:a %s" % (KANAL, LAJU_CUPLIK, BITRATE),
-            "-o", sementara + ".%(ext)s",
-        ]
         log.info("Mengunduh dan mentranskode: %s", meta["title"])
-        try:
-            subprocess.check_call(
-                perintah, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600
-            )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            log.warning("Unduhan lagu gagal: %s", exc)
+
+        if not _unduh(_daftar_percobaan(meta), sementara):
             return None
 
         dihasilkan = sementara + ".mp3"
@@ -204,6 +345,10 @@ async def siapkan(judul: str, penyanyi: str, basis_url: str) -> dict[str, Any]:
 
     lup = asyncio.get_running_loop()
     meta = await lup.run_in_executor(None, cari_youtube, judul, penyanyi)
+    if meta is None:
+        # Kuota YouTube Data API habis atau kuncinya kosong. SoundCloud tidak
+        # memerlukan kunci, jadi pencarian tetap dapat dilanjutkan.
+        meta = await lup.run_in_executor(None, cari_soundcloud, judul, penyanyi)
     if meta is None:
         return {"status": "not_found", "error": "lagu tidak ditemukan"}
 

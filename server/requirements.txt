@@ -28,4 +28,12 @@ redis==5.2.1
 
 # Pencarian lagu dan transkode
 google-api-python-client==2.157.0
-yt-dlp==2024.12.13
+# yt-dlp sengaja tidak dipaku ke satu versi. YouTube mengubah cara kerjanya
+# beberapa kali setahun dan yt-dlp yang tertinggal langsung gagal mengunduh
+# dengan galat yang tidak menjelaskan apa pun. Versi 2024.12.13 yang dipakai
+# sebelumnya sudah tidak dapat mengunduh sama sekali dari Cloud Run.
+#
+# Konsekuensinya, membangun ulang citra dapat menghasilkan versi yang berbeda.
+# Untuk musik itu justru yang diinginkan: versi terbaru selalu yang paling
+# mungkin berhasil.
+yt-dlp>=2026.7.4
