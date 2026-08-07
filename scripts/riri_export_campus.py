@@ -14,7 +14,21 @@ tujuan_dir = os.path.join(AKAR, 'server', 'data')
 s = io.open(src, encoding='utf-8', errors='ignore').read()
 
 # Entri berbentuk: {"id","kategori","judul","isi","kata kunci"}
-pola = re.compile(r'\{"([^"]*)","([^"]*)","((?:[^"\\]|\\.)*)","((?:[^"\\]|\\.)*)","((?:[^"\\]|\\.)*)"\}')
+#
+# Pemisah antar bidang harus mengizinkan spasi dan pergantian baris. Sebagian
+# besar entri ditulis memanjang ke bawah, satu bidang per baris, dan pola lama
+# yang menuntut `","` tanpa spasi hanya cocok untuk entri satu baris.
+#
+# Akibatnya seluruh entri profil kampus, termasuk rektor, visi misi, alamat,
+# biaya, dan kontak, tidak pernah ikut terekspor. Pertanyaan tentang alamat
+# kampus lalu dijawab tidak ditemukan oleh server padahal datanya ada di
+# firmware sejak awal.
+PEMISAH = r'"\s*,\s*"'
+BIDANG = r'((?:[^"\\]|\\.)*)'
+pola = re.compile(
+    r'\{"([^"]*)' + PEMISAH + r'([^"]*)' + PEMISAH + BIDANG + PEMISAH +
+    BIDANG + PEMISAH + BIDANG + r'"\s*\}'
+)
 entri = pola.findall(s)
 print('entri ditemukan:', len(entri))
 

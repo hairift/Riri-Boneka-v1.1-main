@@ -1,3 +1,383 @@
+# Profil UCIC
+
+Kategori: profil
+Kata kunci: ucic,cic,universitas,catur insan,cendekia,cirebon,kampus,sejarah,university,profile,about,tentang
+
+UCIC (Universitas Catur Insan Cendekia) adalah universitas di Cirebon yang berdiri tahun 2019 dari penggabungan STMIK CIC dan AP CIC. Fokus pada teknologi, bisnis, dan sains untuk menghasilkan lulusan yang adaptif dan kompeten di era digital.
+
+
+---
+
+# Rektor UCIC
+
+Kategori: profil
+Kata kunci: rektor,pimpinan,ketua,chandra,lukita,rector,president,leader
+
+Rektor UCIC adalah Assoc. Prof. Dr. Chandra Lukita, S.E., M.M., M.TI.
+
+
+---
+
+# Visi dan Misi UCIC
+
+Kategori: visi_misi
+Kata kunci: visi,misi,tujuan,orientasi,cita cita,vision,mission,goal
+
+Visi: Menjadi universitas berbasis teknologi dan kewirausahaan yang inovatif, adaptif, dan berdaya saing global.
+Misi: Menghasilkan lulusan berkualitas, mendorong inovasi teknologi dan bisnis, melaksanakan Tri Dharma Perguruan Tinggi, menyediakan pendidikan terjangkau, serta mengembangkan kerja sama nasional dan internasional.
+
+
+---
+
+# CIC GREAT - Nilai Dasar UCIC
+
+Kategori: nilai
+Kata kunci: great,nilai,nilai dasar,nilai kampus,karakter kampus,budaya kampus,cic great,ucic great,great values,core value,core values,creativity,initiative,critical thinking,grit,respectful,entrepreneurship,accountable,teamwork
+
+Nilai dasar UCIC disebut CIC GREAT: Creativity, Initiative, Critical Thinking, Grit, Respectful, Entrepreneurship, Accountable, dan Teamwork.
+
+
+---
+
+# Filosofi Logo UCIC
+
+Kategori: profil
+Kata kunci: logo,filosofi,lambang,simbol,makna,symbol,meaning
+
+Perisai biru melambangkan kejujuran, emas berarti optimisme, obor-buku-pena mewakili semangat akademik, serta udang dan Mega Mendung sebagai identitas budaya Cirebon.
+
+
+---
+
+# Lokasi Kampus UCIC
+
+Kategori: lokasi
+Kata kunci: lokasi,alamat,kampus,kesambi,cirebon,gedung,tempat,location,address,where,dimana
+
+UCIC memiliki dua kampus di Cirebon:
+- Kampus 1: Jl. Kesambi No. 202
+- Kampus 2: Jl. Kesambi No. 58A
+
+
+---
+
+# Kontak UCIC
+
+Kategori: kontak
+Kata kunci: kontak,email,telepon,nomor,hubungi,whatsapp,wa,hp,contact,phone,call
+
+Alamat: Jl. Kesambi No. 202, Cirebon.
+Email: info@ucic.ac.id
+WhatsApp/Telepon: +62 895-1231-4188
+
+
+---
+
+# Akreditasi UCIC
+
+Kategori: akreditasi
+Kata kunci: akreditasi,mutu,kualitas,ban pt,peringkat,baik sekali,accreditation,quality,ranking
+
+Akreditasi institusi UCIC adalah Baik Sekali dari BAN-PT.
+
+
+---
+
+# Akreditasi Program Studi UCIC
+
+Kategori: akreditasi
+Kata kunci: akreditasi prodi,akreditasi jurusan,akreditasi ti,akreditasi si,akreditasi dkv,akreditasi akt,akreditasi akuntansi,akreditasi mjn,akreditasi manajemen,akreditasi bisdi,akreditasi bisnis digital,akreditasi pikor,akreditasi pkor,akreditasi mi,akreditasi mb,baik sekali,baik,ban pt
+
+Akreditasi program studi UCIC:
+- Teknik Informatika: Baik Sekali
+- Sistem Informasi: Baik Sekali
+- Desain Komunikasi Visual: Baik
+- Akuntansi: Baik
+- Manajemen: Baik Sekali
+- Bisnis Digital: Baik
+- Pendidikan Kepelatihan Keolahragaan: Baik
+- Manajemen Informatika: Baik Sekali
+- Manajemen Bisnis: Baik Sekali
+
+
+---
+
+# Fasilitas UCIC
+
+Kategori: fasilitas
+Kata kunci: fasilitas,campus 1,campus hub,convention hall,multimedia,dm,3d virtual reality lab,ai data analysis lab,computer lab,ruang meeting,keunggulan,berbasis teknologi,biaya terjangkau,career ready system,dosen kompeten,lokasi strategis,mini class gratis,facility,facilities,infrastructure
+
+Fasilitas Universitas Catur Insan Cendekia:
+- Campus 1
+- Campus Hub
+- Convention Hall
+- Multimedia, DM, 3D Virtual Reality Lab
+- Ruangan Kelas
+- AI & Data Analysis Lab
+- Computer Lab
+- Ruang Meeting
+Keunggulan UCIC:
+- Berbasis Teknologi
+- Biaya Terjangkau
+- Career Ready System
+- Dosen yang Kompeten
+- Lokasi Strategis di Kota Cirebon
+- Belajar Mini Class Gratis
+
+
+---
+
+# Fakultas dan Program Studi UCIC
+
+Kategori: jurusan
+Kata kunci: jurusan ucic,fakultas ucic,program studi ucic,prodi ucic,3 fakultas,semua jurusan,semua prodi,jurusan apa saja,fakultas apa saja,universitas catur insan cendekia,cic,ucic
+
+UCIC memiliki 3 fakultas:
+- Fakultas Teknologi Informasi (FTI): S1 Teknik Informatika (TI), S1 Sistem Informasi (SI), S1 Desain Komunikasi Visual (DKV), D3 Manajemen Informatika (MI).
+- Fakultas Ekonomi dan Bisnis (FEB): S1 Akuntansi (Akt), S1 Manajemen (Mjn), S1 Bisnis Digital (Bisdi), D3 Manajemen Bisnis (MB).
+- Fakultas Pendidikan dan Sains (FPS): S1 Pendidikan Kepelatihan Keolahragaan (Pikor/PKOR).
+
+
+---
+
+# Fakultas Teknologi Informasi (FTI)
+
+Kategori: jurusan
+Kata kunci: fakultas,teknologi,informatika,teknik,sistem informasi,dkv,desain,fti,mi,faculty,technology,information
+
+Fakultas Teknologi Informasi (FTI) membuka:
+- S1 Teknik Informatika (TI)
+- S1 Sistem Informasi (SI)
+- S1 Desain Komunikasi Visual (DKV)
+- D3 Manajemen Informatika (MI)
+
+
+---
+
+# Fakultas Ekonomi dan Bisnis (FEB)
+
+Kategori: jurusan
+Kata kunci: fakultas,ekonomi,bisnis,akuntansi,manajemen,bisnis digital,manajemen bisnis,feb,faculty,business,economics
+
+Fakultas Ekonomi dan Bisnis (FEB) membuka:
+- S1 Akuntansi (Akt)
+- S1 Manajemen (Mjn)
+- S1 Bisnis Digital (Bisdi)
+- D3 Manajemen Bisnis (MB)
+
+
+---
+
+# Fakultas Pendidikan dan Sains (FPS)
+
+Kategori: jurusan
+Kata kunci: fakultas,pendidikan,sains,olahraga,kepelatihan,keolahragaan,fps,pikor,pkor,faculty,education,sports
+
+Fakultas Pendidikan dan Sains (FPS) membuka:
+- S1 Pendidikan Kepelatihan Keolahragaan (Pikor/PKOR)
+
+
+---
+
+# Singkatan Program Studi UCIC
+
+Kategori: jurusan
+Kata kunci: singkatan prodi,singkatan jurusan,kepanjangan ti,kepanjangan si,kepanjangan dkv,kepanjangan akt,kepanjangan mjn,kepanjangan bisdi,kepanjangan pikor,kepanjangan pkor,kepanjangan mi,kepanjangan mb,ti,si,dkv,akt,mjn,bisdi,pikor,pkor,mi,mb
+
+Singkatan program studi UCIC:
+- Teknik Informatika = TI
+- Sistem Informasi = SI
+- Desain Komunikasi Visual = DKV
+- Akuntansi = Akt
+- Manajemen = Mjn
+- Bisnis Digital = Bisdi
+- Pendidikan Kepelatihan Keolahragaan = Pikor atau PKOR
+- Manajemen Informatika = MI
+- Manajemen Bisnis = MB
+
+
+---
+
+# Detail S1 Teknik Informatika
+
+Kategori: jurusan
+Kata kunci: teknik informatika,ti,programming,software,ai,karir,prospek kerja,lulusan,computer science,career
+
+Fokus pada pemrograman, pengembangan software, AI, cybersecurity, dan database.
+
+
+---
+
+# Detail S1 Sistem Informasi
+
+Kategori: jurusan
+Kata kunci: sistem informasi,si,karir,prospek kerja,bisnis,data,information system,career
+
+Menggabungkan teknologi dan bisnis untuk pengelolaan data dan sistem perusahaan.
+
+
+---
+
+# Detail S1 Desain Komunikasi Visual
+
+Kategori: jurusan
+Kata kunci: dkv,desain komunikasi visual,desain,grafis,animasi,ui ux,karir,design,graphic,visual
+
+Mencakup desain grafis, animasi, UI/UX, branding, dan multimedia.
+
+
+---
+
+# Detail S1 Akuntansi
+
+Kategori: jurusan
+Kata kunci: akuntansi,akt,keuangan,audit,pajak,karir,accounting,finance,tax
+
+Mencakup pengelolaan keuangan, audit, perpajakan, dan pelaporan keuangan.
+
+
+---
+
+# Detail S1 Manajemen
+
+Kategori: jurusan
+Kata kunci: manajemen,mjn,bisnis,pemasaran,sdm,karir,organisasi,management,business,marketing,career
+
+Mencakup manajemen bisnis, pemasaran, dan sumber daya manusia.
+
+
+---
+
+# Detail S1 Bisnis Digital
+
+Kategori: jurusan
+Kata kunci: bisnis digital,bisdig,bisdi,e commerce,startup,digital marketing,karir,online,digital business
+
+Mencakup e-commerce, startup, financial technology, digital marketing, dan strategi bisnis digital.
+
+
+---
+
+# Detail S1 Pendidikan Kepelatihan Keolahragaan
+
+Kategori: jurusan
+Kata kunci: pkor,pikor,pendidikan kepelatihan keolahragaan,olahraga,kepelatihan,keolahragaan,atlet,pelatih,fisiologi,karir,sports,coaching,athlete
+
+Mencakup ilmu kepelatihan olahraga, fisiologi, biomekanika, psikologi olahraga, dan manajemen olahraga.
+
+
+---
+
+# Detail D3 Manajemen Informatika
+
+Kategori: jurusan
+Kata kunci: d3,manajemen informatika,mi,diploma,media digital,konten digital,d3 mi
+
+Fokus pada desain digital, konten digital, dan media sosial. Kurikulum meliputi komputer grafis, videografi, copywriting, UI/UX, e-commerce, dan monetisasi konten.
+
+
+---
+
+# Detail D3 Manajemen Bisnis
+
+Kategori: jurusan
+Kata kunci: d3 manajemen bisnis,d3 mb,mb,manajemen bisnis,diploma bisnis,ritel,pemasaran,supply chain,e commerce
+
+Fokus pada bisnis ritel, pemasaran, layanan pelanggan, pengelolaan keuangan bisnis, supply chain, dan technopreneurship.
+
+
+---
+
+# Ringkasan Kurikulum S1 Teknik Informatika
+
+Kategori: kurikulum
+Kata kunci: kurikulum,teknik informatika,ti,semester,mata kuliah,curriculum
+
+Kurikulum S1 Teknik Informatika tersedia dari semester satu sampai delapan. Fokus awal pada dasar komputer, algoritma, basis data, jaringan, dan sistem operasi; semester tengah pada OOP, UI/UX, AI, data mining, mobile, dan keamanan; semester akhir pada IoT, machine learning, proyek, MBKM, magang, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum S1 Sistem Informasi
+
+Kategori: kurikulum
+Kata kunci: kurikulum,sistem informasi,si,semester,mata kuliah,curriculum
+
+Kurikulum S1 Sistem Informasi tersedia dari semester satu sampai delapan. Fokus awal pada sistem dan bisnis; semester tengah pada basis data, UI/UX, agile, ERP, dan pengembangan aplikasi; semester akhir pada proyek sistem informasi, technopreneurship, magang, KKN, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum S1 Desain Komunikasi Visual
+
+Kategori: kurikulum
+Kata kunci: kurikulum,dkv,desain komunikasi visual,semester,mata kuliah,curriculum
+
+Kurikulum S1 Desain Komunikasi Visual tersedia dari semester satu sampai delapan. Materi meliputi dasar desain, tipografi, fotografi, advertising, packaging, animasi 3D, media interaktif, konten digital, proyek DKV, MBKM, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum D3 Manajemen Informatika
+
+Kategori: kurikulum
+Kata kunci: kurikulum,d3 manajemen informatika,manajemen informatika,mi,semester,mata kuliah,curriculum
+
+Kurikulum D3 Manajemen Informatika tersedia dari semester satu sampai enam. Fokus pada media digital, komputer grafis, fotografi, videografi, branding, konten digital, startup digital, UI/UX, e-commerce, sertifikasi, dan tugas akhir.
+
+
+---
+
+# Ringkasan Kurikulum S1 Manajemen
+
+Kategori: kurikulum
+Kata kunci: kurikulum,manajemen,semester,mata kuliah,curriculum
+
+Kurikulum S1 Manajemen tersedia dari semester satu sampai delapan. Fokus pada ekonomi, pemasaran, SDM, keuangan, operasi, technopreneurship, digital transformation, kepemimpinan, magang, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum S1 Bisnis Digital
+
+Kategori: kurikulum
+Kata kunci: kurikulum,bisnis digital,bisdig,bisdi,semester,mata kuliah,curriculum
+
+Kurikulum S1 Bisnis Digital tersedia dari semester satu sampai delapan. Fokus pada konsep bisnis digital, SEO, digital marketing, fintech, startup, IMC, business intelligence, digital business development, MBKM, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum S1 Akuntansi
+
+Kategori: kurikulum
+Kata kunci: kurikulum,akuntansi,semester,mata kuliah,curriculum
+
+Kurikulum S1 Akuntansi tersedia dari semester satu sampai delapan. Fokus pada akuntansi keuangan, audit, perpajakan, sistem informasi akuntansi, metodologi penelitian, etika profesi, magang, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum S1 Pendidikan Kepelatihan Keolahragaan
+
+Kategori: kurikulum
+Kata kunci: kurikulum,pkor,pikor,pendidikan kepelatihan keolahragaan,pendidikan kepelatihan olahraga,semester,mata kuliah,curriculum
+
+Kurikulum S1 Pendidikan Kepelatihan Keolahragaan tersedia dari semester satu sampai delapan. Fokus pada anatomi, fisiologi, kepelatihan cabang olahraga, biomekanika, psikologi olahraga, metodologi penelitian, MBKM, praktik lapangan, dan skripsi.
+
+
+---
+
+# Ringkasan Kurikulum D3 Manajemen Bisnis
+
+Kategori: kurikulum
+Kata kunci: kurikulum,d3 manajemen bisnis,manajemen bisnis,d3 mb,semester,mata kuliah,curriculum
+
+Kurikulum D3 Manajemen Bisnis tersedia dari semester satu sampai enam. Fokus pada bisnis dasar, ritel, perpajakan, akuntansi bisnis, SDM, supply chain, pemasaran ritel, kepemimpinan, seminar bisnis, dan tugas akhir.
+
+
+---
+
 # Prospek Karir S1 Teknik Informatika
 
 Kategori: prospek_karir
@@ -858,6 +1238,169 @@ Kapita Selekta, Tugas Akhir, Komunikasi Bisnis
 
 ---
 
+# Biaya Kuliah UCIC
+
+Kategori: biaya
+Kata kunci: biaya,ukt,spp,kuliah,bayar,cicilan,harga,tarif,uang,dpp,gedung,diskon,gratis,total,tuition,fee,cost,price,berapa,pmb 2026
+
+Ringkasan biaya PMB 2026 UCIC: biaya pendaftaran Rp250.000, perlengkapan Rp500.000, DPP tercantum Rp3.000.000 tetapi diskon 100% jadi gratis, biaya gedung tercantum Rp4.000.000 tetapi diskon 100% jadi gratis. Tersedia skema pembayaran 3 bulan, 1 semester, dan 1 tahun. Pada rincian opsi, komponen Total adalah total pembayaran per prodi sesuai opsi yang dipilih. Gunakan kata kunci opsi 1, opsi 2, opsi 3, nama prodi, kelas sore, atau RPI untuk rincian lengkap.
+
+
+---
+
+# Informasi DPP dan Gedung UCIC
+
+Kategori: biaya
+Kata kunci: dpp,biaya dpp,dpp gratis,gedung,biaya gedung,gedung gratis,diskon 100,diskon seratus persen,gratis,total,total pembayaran
+
+Pada rincian PMB 2026 UCIC, DPP tercantum Rp3.000.000 dan biaya gedung tercantum Rp4.000.000. Namun DPP dan gedung mendapat diskon 100% sehingga gratis. Pada rincian biaya, komponen Total adalah total pembayaran sesuai opsi dan prodi yang dipilih.
+
+
+---
+
+# Biaya PMB 2026 - Opsi 1 (3 Bulan)
+
+Kategori: biaya
+Kata kunci: biaya,ukt,spp,kuliah,bayar,cicilan,pmb,2026,opsi 1,3 bulan,tahap 1
+
+Rincian biaya pembayaran Tahap 1 (1/2 Semester: 3 Bulan) PMB Gelombang 1 Februari UCIC 2026. Catatan: DPP Rp3.000.000 dan Gedung Rp4.000.000 mendapat diskon 100% jadi gratis. Komponen Total adalah total pembayaran.
+- S1 Teknik Informatika: Tahap-1 Rp2.150.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.900.000.
+- S1 Teknik Informatika (Sore): Tahap-1 Rp2.220.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.970.000.
+- S1 Sistem Informasi: Tahap-1 Rp2.150.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.900.000.
+- S1 Sistem Informasi (Sore): Tahap-1 Rp2.220.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.970.000.
+- S1 Desain Komunikasi Visual: Tahap-1 Rp2.150.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.900.000.
+- S1 DKV (Sore): Tahap-1 Rp2.220.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.970.000.
+- S1 Manajemen: Tahap-1 Rp1.850.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.600.000.
+- S1 Manajemen (Sore): Tahap-1 Rp1.935.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.685.000.
+- S1 Manajemen (Kelas RPI): Tahap-1 Rp2.100.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.850.000.
+- S1 Akuntansi: Tahap-1 Rp1.850.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.600.000.
+- S1 Akuntansi (Sore): Tahap-1 Rp1.935.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.685.000.
+- S1 Pendidikan Kepelatihan Keolahragaan: Tahap-1 Rp1.290.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.040.000.
+- S1 Bisnis Digital: Tahap-1 Rp1.340.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.090.000.
+- S1 Bisnis Digital (Sore): Tahap-1 Rp1.440.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.190.000.
+- D3 Manajemen Bisnis: Tahap-1 Rp1.095.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp1.845.000.
+- D3 Manajemen Informatika: Tahap-1 Rp1.095.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp1.845.000.
+- D3 Manajemen Informatika (Sore): Tahap-1 Rp1.245.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp1.955.000.
+
+
+---
+
+# Biaya PMB 2026 - Opsi 2 (1 Semester)
+
+Kategori: biaya
+Kata kunci: biaya,ukt,spp,kuliah,bayar,cicilan,pmb,2026,opsi 2,6 bulan,1 semester
+
+Rincian biaya pembayaran Tahap 1 & 2 (1 Semester: 6 Bulan) PMB Gelombang 1 Februari UCIC 2026. Catatan: DPP Rp3.000.000 dan Gedung Rp4.000.000 mendapat diskon 100% jadi gratis. Komponen Total adalah total pembayaran.
+- S1 Teknik Informatika: Tahap-1 Rp4.130.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.880.000.
+- S1 Teknik Informatika (Sore): Tahap-1 Rp4.270.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp5.020.000.
+- S1 Sistem Informasi: Tahap-1 Rp4.130.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.880.000.
+- S1 Sistem Informasi (Sore): Tahap-1 Rp4.270.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp5.020.000.
+- S1 Desain Komunikasi Visual: Tahap-1 Rp4.130.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.880.000.
+- S1 DKV (Sore): Tahap-1 Rp4.270.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp5.020.000.
+- S1 Manajemen: Tahap-1 Rp3.530.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.280.000.
+- S1 Manajemen (Sore): Tahap-1 Rp3.700.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.450.000.
+- S1 Manajemen (Kelas RPI): Tahap-1 Rp4.030.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.780.000.
+- S1 Akuntansi: Tahap-1 Rp3.530.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.280.000.
+- S1 Akuntansi (Sore): Tahap-1 Rp3.700.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp4.450.000.
+- S1 Pendidikan Kepelatihan Keolahragaan: Tahap-1 Rp2.410.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp3.160.000.
+- S1 Bisnis Digital: Tahap-1 Rp2.510.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp3.260.000.
+- S1 Bisnis Digital (Sore): Tahap-1 Rp2.710.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp3.460.000.
+- D3 Manajemen Bisnis: Tahap-1 Rp2.020.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.770.000.
+- D3 Manajemen Informatika: Tahap-1 Rp2.020.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp2.770.000.
+- D3 Manajemen Informatika (Sore): Tahap-1 Rp2.320.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp3.070.000.
+
+
+---
+
+# Biaya PMB 2026 - Opsi 3 (1 Tahun)
+
+Kategori: biaya
+Kata kunci: biaya,ukt,spp,kuliah,bayar,cicilan,pmb,2026,opsi 3,1 tahun,2 semester
+
+Rincian biaya pembayaran Tahap 1, 2, 3, 4 (2 Semester: 1 Tahun) PMB Gelombang 1 Februari UCIC 2026. Catatan: DPP Rp3.000.000 dan Gedung Rp4.000.000 mendapat diskon 100% jadi gratis. Komponen Total adalah total pembayaran.
+- S1 Teknik Informatika: Tahap-1 Rp8.260.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp9.010.000.
+- S1 Teknik Informatika (Sore): Tahap-1 Rp8.540.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp9.290.000.
+- S1 Sistem Informasi: Tahap-1 Rp8.260.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp9.010.000.
+- S1 Sistem Informasi (Sore): Tahap-1 Rp8.540.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp9.290.000.
+- S1 Manajemen: Tahap-1 Rp7.060.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp7.810.000.
+- S1 Manajemen (Sore): Tahap-1 Rp7.400.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp8.150.000.
+- S1 Manajemen (Kelas RPI): Tahap-1 Rp8.060.000, Pendaftaran Rp250.000, Perlengkapan Rp500.000, DPP Rp3.000.000, Gedung Rp4.000.000, Total Rp8.810.000.
+
+
+---
+
+# Pendaftaran Mahasiswa Baru (PMB)
+
+Kategori: pendaftaran
+Kata kunci: daftar,pendaftaran,pmb,mahasiswa baru,registrasi,cara daftar,masuk,persyaratan,register,admission,enrollment,how to apply
+
+Cara daftar: isi formulir online atau offline, lengkapi dokumen, lalu bayar biaya pendaftaran sesuai skema PMB yang berlaku. Pada rincian PMB 2026 yang tersimpan, biaya pendaftaran tercantum Rp250.000.
+Syarat: lulusan SMA/SMK/MA, fotokopi ijazah, KTP, KK, dan pas foto terbaru.
+Info PMB: +62 895-1231-4188.
+
+
+---
+
+# Program Beasiswa UCIC
+
+Kategori: beasiswa
+Kata kunci: beasiswa,bantuan,gratis,potongan,scholarship,prestasi,kip,financial aid,grant,free,bantuan biaya
+
+UCIC menyediakan beasiswa prestasi akademik, prestasi non-akademik (olahraga/seni), KIP Kuliah (pemerintah), beasiswa internal kampus, dan beasiswa olahraga. Hubungi bagian kemahasiswaan untuk info lebih lanjut.
+
+
+---
+
+# Program Magang UCIC
+
+Kategori: jurusan
+Kata kunci: magang,internship,kerja,praktik,industri,pengalaman,intern,job training
+
+Mahasiswa dapat magang di semester akhir untuk mendapat pengalaman kerja nyata, membangun jaringan profesional, dan memperkuat portofolio sebagai bekal karir.
+
+
+---
+
+# Dosen Fakultas Teknologi Informasi (FTI) UCIC
+
+Kategori: dosen
+Kata kunci: dosen fti,dosen teknik informatika,dosen sistem informasi,dosen dkv,dosen mi,dosen teknologi informasi,lecturer fti,teacher fti,pengajar fti
+
+Agus Sevtiana, Arif Nursetyo, Bambang Sugiarto, Kusnadi, Lena Magdalena, Linda Norhan, Marsani Asfi, Mesi Febima, Muhammad Hatta, Muhammad Afif Sulhan, Petrus Sokibi, Prema A.D.K., Ridho Taufiq Subagio, Rifqi Fahrudin, Rinaldi Adam, Unang Solihin, Verina Tita Nabila, Victor Asih, Willy Eka Septian, Wiwiek Nurkomala Dewi, Dzulfiqar Fickri Rosyid, Galih M.P., Ine Rachmawati, Tiara Khodijah.
+
+
+---
+
+# Dosen Fakultas Ekonomi dan Bisnis (FEB) UCIC
+
+Kategori: dosen
+Kata kunci: dosen feb,dosen ekonomi,dosen bisnis,dosen akuntansi,dosen manajemen,lecturer feb,teacher feb,pengajar feb
+
+Aan Kanivia, Ade Elza Surachman, Dessy Kumala Dewi, Dewi Anggun Puspitarini, Fanny Andriani Setiawan, Safitri Akbari, Aditya Kurniawan Chandra, Agung Supriyadi, Amroni, Dewi Laily Purnamasari, Feri Fauzi, Gytha N.D.P.G., Hartanto, Ika Kartika, Mualif Ismail, Muthia Fariza, Ni Wayan Fitriana Ayu Lestari, Oryz Agnu Dian Wulandari, Siti Nurhajjah, Suwandi, Turini, Chandra Lukita, Ika Iryanti, Muhammad Fadheel Djamaly, Winsen Setiawan.
+
+
+---
+
+# Dosen Fakultas Pendidikan dan Sains (FPS) UCIC
+
+Kategori: dosen
+Kata kunci: dosen fps,dosen olahraga,dosen pkor,dosen pendidikan,lecturer fps,teacher fps,pengajar fps
+
+Helmi Akmal Fauzan, Kidwan Alif, Nadia Nur Paramitha, Nur Muhamad Hildan, Yogi Slamet.
+
+
+---
+
+# Dosen Mata Kuliah Umum (MKU) UCIC
+
+Kategori: dosen
+Kata kunci: dosen mku,dosen umum,dosen pancasila,dosen bahasa,dosen english,lecturer general,pengajar umum
+
+Chiang Yulius Darmawan, Mohammad Umar Fakhrudin, Sudadi Pranata, Dr. Taufan Hunneman, Viar Dwi Kartika, Yuni Awalaturrohmah Solihah.
+
+
+---
+
 # Aan Kanivia, S.E., M.Ak.
 
 Kategori: dosen
@@ -1474,3 +2017,32 @@ Kategori: dosen
 Kata kunci: team ai,kecerdasan buatan,artificial intelligence
 
 Mata kuliah: Kecerdasan Buatan (untuk berbagai program studi).
+
+
+---
+
+# Rekomendasi Jurusan UCIC
+
+Kategori: profil
+Kata kunci: faq,tanya jawab,ucic bagus,peluang kerja,rekomendasi jurusan,komputer,desain,bisnis,good,recommendation,bagus
+
+Tertarik komputer & teknologi? Pilih Teknik Informatika atau Sistem Informasi.
+Suka desain & visual? Pilih Desain Komunikasi Visual.
+Minat bisnis & keuangan? Pilih Manajemen atau Akuntansi.
+Ingin bisnis berbasis digital? Pilih Bisnis Digital.
+Hobi atau berprestasi di olahraga? Pilih Pendidikan Kepelatihan Keolahragaan.
+Ingin kuliah 3 tahun? Pilih D3 Manajemen Informatika atau D3 Manajemen Bisnis.
+
+
+---
+
+# Data Ringkas UCIC
+
+Kategori: profil
+Kata kunci: ucic,lengkap,data,semua,informasi,universitas,kampus,complete,all,summary,ringkasan,jurusan apa saja
+
+Universitas Catur Insan Cendekia (UCIC), Cirebon.
+Rektor: Assoc. Prof. Dr. Chandra Lukita, S.E., M.M., M.TI.
+Kampus 1: Jl. Kesambi No. 202 | Kampus 2: Jl. Kesambi No. 58A. WA: +62 895-1231-4188 | Email: info@ucic.ac.id.
+Fakultas: FTI (S1 TI, SI, DKV; D3 MI), FEB (S1 Akt, Mjn, Bisdi; D3 MB), FPS (S1 Pendidikan Kepelatihan Keolahragaan/Pikor/PKOR).
+Beasiswa: prestasi akademik, non-akademik, KIP Kuliah, internal, olahraga.
