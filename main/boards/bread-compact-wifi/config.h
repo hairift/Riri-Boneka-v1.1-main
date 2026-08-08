@@ -81,7 +81,39 @@
 #define RIRI_TOUCH_RIGHT_FOOT_GPIO  GPIO_NUM_13
 #define RIRI_TOUCH_LEFT_FOOT_GPIO   GPIO_NUM_14
 
+// ---------------------------------------------------------------------------
+// Dua LED RGB indikator tambahan
+//
+// Semua pin di bawah ini benar-benar bebas pada ESP32-S3 dengan flash dan PSRAM
+// oktal. GPIO26 sampai GPIO37 dipakai flash dan PSRAM, GPIO45 dan GPIO46 adalah
+// pin strapping, sedangkan GPIO19 dan GPIO20 dipakai USB bawaan, jadi semuanya
+// dihindari.
+//
+// LED baterai: merah hampir habis, kuning menengah, hijau penuh.
+// LED status : biru saat Wi-Fi tersambung, hijau berkedip saat menyala, merah
+//              saat jaringan bermasalah, berganti warna saat lagu diputar.
+// ---------------------------------------------------------------------------
+#define RIRI_RGB_BATTERY_R_GPIO GPIO_NUM_17
+#define RIRI_RGB_BATTERY_G_GPIO GPIO_NUM_21
+#define RIRI_RGB_BATTERY_B_GPIO GPIO_NUM_38
+#define RIRI_RGB_STATUS_R_GPIO  GPIO_NUM_39
+#define RIRI_RGB_STATUS_G_GPIO  GPIO_NUM_40
+#define RIRI_RGB_STATUS_B_GPIO  GPIO_NUM_41
+
+// Isi 1 bila memakai LED RGB anoda bersama, yaitu kaki panjangnya ke 3V3.
+// Untuk katoda bersama, yaitu kaki panjangnya ke GND, biarkan 0.
+#define RIRI_RGB_COMMON_ANODE 0
+
 // Pembacaan baterai lewat ADC dimatikan karena GPIO2 dipakai foil idung.
+//
+// Seluruh kanal ADC1 pada ESP32-S3 berada di GPIO1 sampai GPIO10, dan pada
+// boneka ini kesepuluh pin itu sudah terpakai foil sentuh, mikrofon, pengeras
+// suara, dan OLED. ADC2 tidak dapat dipakai bersamaan dengan Wi-Fi.
+//
+// Akibatnya LED baterai tidak punya sumber data dan sengaja dibiarkan padam,
+// bukan dibuat hijau, supaya tidak ada yang mengira baterainya penuh. Untuk
+// menyalakannya, satu foil harus direlakan: ubah RIRI_TOUCH_NOSE_GPIO menjadi
+// GPIO_NUM_NC lalu isi BATTERY_ADC_GPIO dengan GPIO_NUM_2.
 #define BATTERY_ADC_GPIO      GPIO_NUM_NC
 #define BATTERY_ADC_UNIT      ADC_UNIT_1
 #define BATTERY_ADC_CHANNEL   ADC_CHANNEL_1

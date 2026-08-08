@@ -573,6 +573,17 @@ std::string MusicPlayer::Play(const std::string& song, const std::string& artist
     // waktu singkat ini tetap terhitung.
     playing_ = true;
     streaming_ = false;
+
+    // Deteksi kata pemicu dimatikan sejak sekarang, bukan menunggu lagunya
+    // mulai berbunyi.
+    //
+    // Menyiapkan lagu baru memakan belasan sampai puluhan detik, dan selama
+    // itu perangkat berstatus menganggur dengan kata pemicu menyala. Di
+    // ruangan ramai, satu kata pemicu palsu pada rentang itu membatalkan
+    // permintaan lagu yang sudah berjalan, sehingga lagunya tidak pernah jadi
+    // diputar. Mematikannya sejak awal menutup seluruh celah itu.
+    audio_service.EnableWakeWordDetection(false);
+
     if (!StartTasks()) {
         playing_ = false;
         ring_.Release();

@@ -46,6 +46,7 @@ set(SOURCES "audio/audio_codec.cc"
             "web_search.cc"
             "music_player.cc"
             "riri_touch_controller.cc"
+            "riri_rgb_indicator.cc"
             )
 
 set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "audio" "audio/demuxer" "protocols")

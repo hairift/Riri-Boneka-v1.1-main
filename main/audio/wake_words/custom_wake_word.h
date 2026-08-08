@@ -53,6 +53,31 @@ private:
     int duration_ = 3000;
     float threshold_ = 0.2;
     std::deque<Command> commands_;
+
+    // ----------------------------------------------------------------------
+    // Gerbang tenaga suara
+    //
+    // Nilai kemiripan tidak dapat memisahkan kata pemicu asli dari yang palsu.
+    // Pada pengukuran di perangkat, kata pemicu asli bernilai 0,139 sampai
+    // 0,257 sedangkan yang palsu bernilai 0,162 sampai 0,207, sehingga
+    // rentangnya bertumpang tindih seluruhnya. Menaikkan ambang kemiripan
+    // hanya akan ikut membuang panggilan yang benar.
+    //
+    // Yang membedakan keduanya adalah kenyaringan. Pengguna memanggil dari
+    // jarak dekat, sedangkan percakapan orang lain di ruangan ramai terdengar
+    // jauh lebih pelan. Gerbang ini menolak deteksi yang tenaganya di bawah
+    // ambang, sehingga suara latar tidak lagi membangunkan perangkat.
+    // ----------------------------------------------------------------------
+    void PerbaruiTenaga(const int16_t* data, size_t samples);
+    bool TenagaCukup() const;
+
+    // Tenaga tertinggi pada beberapa potongan terakhir, dalam satuan RMS.
+    // Riwayat dipakai supaya awal kata yang pelan tidak menggagalkan gerbang
+    // ketika bagian tengahnya sudah nyaring.
+    static constexpr int kJumlahRiwayatTenaga = 8;
+    int16_t riwayat_tenaga_[kJumlahRiwayatTenaga] = {0};
+    int indeks_tenaga_ = 0;
+    int64_t waktu_tolak_terakhir_us_ = 0;
  
     std::function<void(const std::string& wake_word)> wake_word_detected_callback_;
     AudioCodec* codec_ = nullptr;

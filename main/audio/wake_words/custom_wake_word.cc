@@ -8,8 +8,20 @@
 #include <esp_mn_models.h>
 #include <esp_mn_speech_commands.h>
 #include <cJSON.h>
+#include <cmath>
+#include <esp_timer.h>
 
 #define TAG "CustomWakeWord"
+
+#ifndef CONFIG_WAKE_WORD_MIN_RMS
+#define CONFIG_WAKE_WORD_MIN_RMS 1200
+#endif
+
+namespace {
+// Jeda minimum antar catatan penolakan supaya log tidak dibanjiri saat berada
+// di ruangan ramai.
+constexpr int64_t kJedaCatatanTolakUs = 3000000;
+}  // namespace
 
 CustomWakeWord::CustomWakeWord()
     : wake_word_opus_() {
@@ -148,6 +160,38 @@ void CustomWakeWord::Stop() {
 
     std::lock_guard<std::mutex> lock(input_buffer_mutex_);
     input_buffer_.clear();
+    // Riwayat tenaga ikut dikosongkan supaya sesi berikutnya tidak menilai
+    // dengan nilai dari sesi sebelumnya.
+    for (int i = 0; i < kJumlahRiwayatTenaga; ++i) {
+        riwayat_tenaga_[i] = 0;
+    }
+    indeks_tenaga_ = 0;
+}
+
+void CustomWakeWord::PerbaruiTenaga(const int16_t* data, size_t samples) {
+    if (data == nullptr || samples == 0) {
+        return;
+    }
+    // Akumulasi memakai bilangan 64 bit karena kuadrat cuplikan 16 bit sudah
+    // mencapai satu miliar dan potongannya berisi ratusan cuplikan.
+    int64_t jumlah = 0;
+    for (size_t i = 0; i < samples; ++i) {
+        const int32_t nilai = data[i];
+        jumlah += (int64_t)nilai * nilai;
+    }
+    const int rms = (int)sqrt((double)jumlah / (double)samples);
+    riwayat_tenaga_[indeks_tenaga_] = (int16_t)(rms > 32767 ? 32767 : rms);
+    indeks_tenaga_ = (indeks_tenaga_ + 1) % kJumlahRiwayatTenaga;
+}
+
+bool CustomWakeWord::TenagaCukup() const {
+    int tertinggi = 0;
+    for (int i = 0; i < kJumlahRiwayatTenaga; ++i) {
+        if (riwayat_tenaga_[i] > tertinggi) {
+            tertinggi = riwayat_tenaga_[i];
+        }
+    }
+    return tertinggi >= CONFIG_WAKE_WORD_MIN_RMS;
 }
 
 void CustomWakeWord::Feed(const std::vector<int16_t>& data) {
@@ -180,6 +224,7 @@ void CustomWakeWord::FeedSamples(const int16_t* data, size_t samples, bool mono)
     
     int chunksize = multinet_->get_samp_chunksize(multinet_model_data_);
     while (input_buffer_.size() >= chunksize) {
+        PerbaruiTenaga(input_buffer_.data(), chunksize);
 #if CONFIG_SEND_WAKE_WORD_DATA
         wake_word_audio_cache_.Store(input_buffer_.data(), chunksize);
 #endif
@@ -192,6 +237,19 @@ void CustomWakeWord::FeedSamples(const int16_t* data, size_t samples, bool mono)
                 ESP_LOGI(TAG, "Custom wake word detected: command_id=%d, string=%s, prob=%f", 
                         mn_result->command_id[i], mn_result->string, mn_result->prob[i]);
                 auto& command = commands_[mn_result->command_id[i] - 1];
+                if (command.action == "wake" && !TenagaCukup()) {
+                    const int64_t sekarang = esp_timer_get_time();
+                    if (sekarang - waktu_tolak_terakhir_us_ > kJedaCatatanTolakUs) {
+                        waktu_tolak_terakhir_us_ = sekarang;
+                        ESP_LOGI(TAG,
+                                 "Kata pemicu ditolak karena terlalu pelan, "
+                                 "tenaga %d di bawah ambang %d",
+                                 (int)riwayat_tenaga_[(indeks_tenaga_ + kJumlahRiwayatTenaga - 1) %
+                                                      kJumlahRiwayatTenaga],
+                                 (int)CONFIG_WAKE_WORD_MIN_RMS);
+                    }
+                    continue;
+                }
                 if (command.action == "wake") {
                     last_detected_wake_word_ = command.text;
                     running_ = false;

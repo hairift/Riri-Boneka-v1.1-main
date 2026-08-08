@@ -10,6 +10,7 @@
 #include "led/single_led.h"
 #include "assets/lang_config.h"
 #include "riri_touch_controller.h"
+#include "riri_rgb_indicator.h"
 #include "campus_mcp_tools.h"
 
 #include <esp_log.h>
@@ -142,6 +143,7 @@ private:
     void InitializeTools() {
         static LampController lamp(LAMP_GPIO);
         RiriTouchController::GetInstance().Initialize();
+        RiriRgbIndicator::GetInstance().Initialize();
         static CampusMcpTools campus_mcp;
     }
 

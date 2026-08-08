@@ -21,6 +21,14 @@
 
 #define TAG "Application"
 
+// Jeda antar denyut pemanasan server, dalam detik.
+//
+// Cloud Run biasanya menidurkan layanan setelah sekitar lima belas menit
+// menganggur. Empat menit memberi jarak aman yang lebar tanpa membuat
+// permintaan jadi sering, dan satu denyut hanya berupa satu permintaan
+// pemeriksaan kesehatan yang sangat ringan.
+static constexpr int kDetikAntarDenyutServer = 240;
+
 Application::Application() {
     event_group_ = xEventGroupCreate();
 
@@ -289,6 +297,23 @@ void Application::Run() {
                 SystemInfo::PrintHeapStats();
                 // SystemInfo::PrintTaskList();
                 // SystemInfo::PrintTaskCpuUsage(pdMS_TO_TICKS(1000));
+            }
+
+            // Jaga server tetap terjaga selama perangkat menyala.
+            //
+            // Cloud Run menghentikan layanan sepenuhnya setelah beberapa menit
+            // menganggur supaya tidak ada biaya berjalan. Konsekuensinya,
+            // permintaan pertama sesudah lama diam harus menunggu instance
+            // dibangunkan, dan penantian itu ditanggung pengguna: pertanyaan
+            // kampus dijawab dari data lokal saja, dan permintaan lagu gagal.
+            //
+            // Denyut berkala ini membuat layanan tidak pernah sempat tertidur
+            // selama perangkat hidup, sehingga RAG dan musik selalu siap.
+            // Denyutnya hanya dikirim saat perangkat menganggur agar tidak
+            // pernah berebut jaringan dengan aliran suara yang sedang berjalan.
+            if (clock_ticks_ % kDetikAntarDenyutServer == 0 &&
+                GetDeviceState() == kDeviceStateIdle) {
+                RiriServerWarmUp();
             }
         }
     }
