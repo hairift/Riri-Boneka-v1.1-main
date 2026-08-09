@@ -67,7 +67,7 @@ Pembacaan baterai lewat ADC dimatikan karena `GPIO2` dipakai foil idung.
 | [Panduan build dan flash](docs/riri-build.md) | Cara membangun dan mengunggah firmware dengan ESP-IDF 6.0.2 |
 | [Sensor sentuh foil tembaga](docs/riri-touch.md) | Pemasangan, cara kerja, dan pemecahan masalah foil |
 | [Lampu indikator RGB](docs/riri-led.md) | Arti setiap warna lampu bawaan papan |
-| [Dua LED RGB indikator](docs/riri-rgb-indikator.md) | Pin, resistor, dan arti warna LED baterai serta LED status |
+| [LED status dan penunjuk baterai](docs/riri-rgb-indikator.md) | Pin, resistor, arti warna, dan penyambungan modul kapasitas baterai |
 | [Server Riri](docs/riri-server.md) | RAG kampus, pencarian web, dan musik di sisi server |
 | [Pemutar musik](docs/riri-music.md) | Alur pemutaran lagu dari server sampai pengeras suara |
 | [Data kampus dan pencarian web](docs/riri-rag.md) | Alat MCP, prioritas jawaban, dan aturan anti mengarang |

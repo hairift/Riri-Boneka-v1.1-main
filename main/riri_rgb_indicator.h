@@ -4,22 +4,25 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <atomic>
-
 /**
- * Dua LED RGB indikator tambahan pada boneka Riri.
+ * LED RGB indikator status pada boneka Riri.
  *
  * LED bawaan papan di GPIO48 tetap dipakai sebagai penanda status percakapan.
- * Dua LED ini menambahkan informasi yang tidak terlihat dari sana:
+ * LED ini menambahkan informasi yang tidak terlihat dari sana:
  *
- *   LED baterai  merah bila hampir habis, kuning bila menengah, hijau bila
- *                penuh, dan berdenyut lembut saat sedang diisi.
- *   LED status   biru saat Wi-Fi tersambung, hijau berkedip saat perangkat
- *                sedang menyala, merah saat jaringan bermasalah, dan berganti
- *                warna terus-menerus saat lagu diputar.
+ *   biru           Wi-Fi tersambung
+ *   hijau berkedip perangkat sedang menyala
+ *   merah berkedip jaringan bermasalah atau tersendat
+ *   berganti warna lagu sedang diputar
  *
- * Keduanya digerakkan PWM lewat LEDC sehingga warnanya dapat dicampur, bukan
- * sekadar menyala penuh.
+ * Sisa daya baterai tidak ditampilkan di sini. Boneka memakai modul penunjuk
+ * kapasitas baterai lithium yang berdiri sendiri dan mengukur tegangan sel
+ * secara langsung, jauh lebih tepat daripada yang dapat dibaca ESP32 pada
+ * boneka ini. Seluruh kanal ADC1 memang sudah terpakai foil sentuh dan jalur
+ * audio.
+ *
+ * Warnanya digerakkan PWM lewat LEDC sehingga dapat dicampur, bukan sekadar
+ * menyala penuh.
  */
 class RiriRgbIndicator {
 public:
@@ -47,16 +50,9 @@ private:
     void Jalan();
 
     void SiapkanKanal(int kanal, gpio_num_t gpio);
-    void TulisWarna(int kanal_awal, Warna warna);
-    Warna WarnaBaterai(int denyut);
+    void TulisWarna(Warna warna);
     Warna WarnaStatus(int denyut);
 
     bool siap_ = false;
     TaskHandle_t task_ = nullptr;
-
-    // Nilai baterai disimpan supaya pembacaan yang gagal tidak membuat
-    // lampunya berkedip-kedip antara warna terakhir dan padam.
-    int level_baterai_ = -1;
-    bool sedang_mengisi_ = false;
-    int64_t baca_baterai_berikutnya_us_ = 0;
 };
