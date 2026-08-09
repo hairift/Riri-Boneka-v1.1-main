@@ -106,33 +106,59 @@ sedang diambil.
 ## Kata Pemicu di Tempat Ramai
 
 Deteksi kata pemicu tidak hanya menilai kemiripan bunyi, tetapi juga
-kenyaringannya.
+kenyaringannya dibandingkan kebisingan sekitar.
 
-Alasannya, kemiripan saja tidak cukup. Pada pengukuran di perangkat, kata
-pemicu asli bernilai 0,139 sampai 0,257 sedangkan yang palsu bernilai 0,162
-sampai 0,207. Rentangnya bertumpang tindih seluruhnya, sehingga tidak ada
-ambang kemiripan yang dapat memisahkan keduanya. Menaikkan ambang hanya akan
-ikut membuang panggilan yang benar.
+### Kenapa kemiripan saja tidak cukup
 
-Yang membedakan keduanya adalah jarak. Pengguna memanggil dari dekat,
-sedangkan percakapan orang lain di ruangan ramai terdengar jauh lebih pelan.
-Deteksi yang tenaganya di bawah `CONFIG_WAKE_WORD_MIN_RMS` ditolak, dan
-alasannya dicatat di log:
+Pada pengukuran di perangkat, kata pemicu asli bernilai 0,139 sampai 0,257
+sedangkan yang palsu bernilai 0,162 sampai 0,207. Rentangnya bertumpang tindih
+seluruhnya, sehingga tidak ada ambang kemiripan yang dapat memisahkan keduanya.
+Menaikkan ambang hanya akan ikut membuang panggilan yang benar.
+
+### Kenapa perbandingannya relatif
+
+Yang membedakan panggilan asli dari suara latar adalah jarak. Pengguna
+memanggil dari dekat, sedangkan percakapan orang lain di ruangan ramai
+terdengar jauh lebih pelan dan justru menjadi kebisingan latar.
+
+Perbandingannya dibuat relatif terhadap kebisingan yang sedang berlangsung,
+bukan terhadap angka tetap. Ambang tetap tidak dapat dikalibrasi sekali untuk
+semua tempat: angka yang cukup di ruangan sepi menjadi terlalu rendah di
+ruangan ramai, dan sebaliknya angka yang cukup di ruangan ramai membuat
+panggilan di ruangan sepi ikut terbuang.
+
+Perkiraan kebisingan latar turun cepat dan naik lambat, sehingga yang terlacak
+adalah keadaan ruangan, bukan suara orang berbicara.
+
+### Cara menyetel
+
+Setiap deteksi mencatat angkanya di log, baik yang diterima maupun yang
+ditolak:
 
 ```text
-I CustomWakeWord: Kata pemicu ditolak karena terlalu pelan, tenaga 412 di bawah ambang 1200
+I CustomWakeWord: Kata pemicu diterima, tenaga 1840 melewati ambang 620 (kebisingan latar 248)
+I CustomWakeWord: Kata pemicu ditolak, tenaga 410 di bawah ambang 620 (kebisingan latar 248)
 ```
 
-Nilai bawaannya 1200. Rekaman uji ucapan pengguna bernilai sekitar 3300, jadi
-jaraknya lebar. Naikkan bila perangkat masih terbangun sendiri di tempat ramai,
-turunkan bila panggilan yang benar mulai terabaikan, dan isi nol untuk
-mematikan penyaringan ini sepenuhnya.
+| Pengaturan | Bawaan | Arti |
+|---|---|---|
+| `CONFIG_WAKE_WORD_NOISE_RATIO` | 25 | Panggilan harus 2,5 kali lebih nyaring daripada kebisingan latar |
+| `CONFIG_WAKE_WORD_MIN_RMS` | 250 | Ambang dasar saat ruangan benar-benar sunyi |
 
-Selain itu, deteksi kata pemicu dimatikan sejak lagu **mulai disiapkan**, bukan
-sejak lagu mulai berbunyi. Menyiapkan lagu baru memakan belasan sampai puluhan
-detik, dan selama itu perangkat berstatus menganggur. Di ruangan ramai, satu
-kata pemicu palsu pada rentang itu membatalkan permintaan lagu yang sudah
-berjalan, sehingga lagunya tidak pernah jadi diputar.
+Ambang yang dipakai adalah nilai terbesar di antara keduanya.
+
+Bila perangkat masih terbangun oleh suara orang lain, naikkan
+`WAKE_WORD_NOISE_RATIO`. Bila panggilan yang benar mulai terabaikan,
+turunkan. Angka pada log memberi tahu persis berapa yang perlu diubah: bandingkan
+tenaga panggilan Anda dengan ambang yang tercatat.
+
+### Kata pemicu dan musik
+
+Deteksi kata pemicu dimatikan sejak lagu **mulai disiapkan**, bukan sejak lagu
+mulai berbunyi. Menyiapkan lagu baru memakan belasan sampai puluhan detik, dan
+selama itu perangkat berstatus menganggur. Di ruangan ramai, satu kata pemicu
+palsu pada rentang itu membatalkan permintaan lagu yang sudah berjalan,
+sehingga lagunya tidak pernah jadi diputar.
 
 ## Jaringan yang Padat
 

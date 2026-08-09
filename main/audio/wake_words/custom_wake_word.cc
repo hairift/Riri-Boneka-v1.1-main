@@ -14,13 +14,25 @@
 #define TAG "CustomWakeWord"
 
 #ifndef CONFIG_WAKE_WORD_MIN_RMS
-#define CONFIG_WAKE_WORD_MIN_RMS 1200
+#define CONFIG_WAKE_WORD_MIN_RMS 250
+#endif
+
+#ifndef CONFIG_WAKE_WORD_NOISE_RATIO
+#define CONFIG_WAKE_WORD_NOISE_RATIO 25
 #endif
 
 namespace {
 // Jeda minimum antar catatan penolakan supaya log tidak dibanjiri saat berada
 // di ruangan ramai.
 constexpr int64_t kJedaCatatanTolakUs = 3000000;
+
+// Kecepatan penyesuaian perkiraan kebisingan latar.
+//
+// Turun cepat supaya perangkat segera menyesuaikan diri saat pindah dari
+// ruangan ramai ke ruangan sepi, dan naik sangat lambat supaya suara orang
+// berbicara tidak ikut terhitung sebagai kebisingan latar.
+constexpr float kTurunCepat = 0.20f;
+constexpr float kNaikLambat = 0.005f;
 }  // namespace
 
 CustomWakeWord::CustomWakeWord()
@@ -166,6 +178,8 @@ void CustomWakeWord::Stop() {
         riwayat_tenaga_[i] = 0;
     }
     indeks_tenaga_ = 0;
+    // Perkiraan kebisingan sengaja tidak dinolkan supaya perangkat tidak perlu
+    // belajar ulang dari awal setiap kali selesai satu percakapan.
 }
 
 void CustomWakeWord::PerbaruiTenaga(const int16_t* data, size_t samples) {
@@ -182,16 +196,36 @@ void CustomWakeWord::PerbaruiTenaga(const int16_t* data, size_t samples) {
     const int rms = (int)sqrt((double)jumlah / (double)samples);
     riwayat_tenaga_[indeks_tenaga_] = (int16_t)(rms > 32767 ? 32767 : rms);
     indeks_tenaga_ = (indeks_tenaga_ + 1) % kJumlahRiwayatTenaga;
+
+    // Perkiraan kebisingan latar turun cepat dan naik lambat, sehingga yang
+    // terlacak adalah keadaan ruangan, bukan suara orang berbicara.
+    if (lantai_bising_ <= 0.0f) {
+        lantai_bising_ = (float)rms;
+    } else if ((float)rms < lantai_bising_) {
+        lantai_bising_ += ((float)rms - lantai_bising_) * kTurunCepat;
+    } else {
+        lantai_bising_ += ((float)rms - lantai_bising_) * kNaikLambat;
+    }
 }
 
-bool CustomWakeWord::TenagaCukup() const {
+int CustomWakeWord::TenagaPuncak() const {
     int tertinggi = 0;
     for (int i = 0; i < kJumlahRiwayatTenaga; ++i) {
         if (riwayat_tenaga_[i] > tertinggi) {
             tertinggi = riwayat_tenaga_[i];
         }
     }
-    return tertinggi >= CONFIG_WAKE_WORD_MIN_RMS;
+    return tertinggi;
+}
+
+int CustomWakeWord::AmbangSekarang() const {
+    // Ambang relatif: panggilan harus sekian kali lebih nyaring daripada
+    // kebisingan latar. Rasionya disimpan sebagai bilangan bulat per sepuluh
+    // supaya dapat diatur lewat menuconfig tanpa bilangan pecahan.
+    const int relatif = (int)(lantai_bising_ * CONFIG_WAKE_WORD_NOISE_RATIO / 10.0f);
+    // Ambang dasar menjaga agar keheningan total tidak membuat ambangnya nol,
+    // sehingga desis mikrofon pun tidak akan pernah cukup.
+    return relatif > CONFIG_WAKE_WORD_MIN_RMS ? relatif : CONFIG_WAKE_WORD_MIN_RMS;
 }
 
 void CustomWakeWord::Feed(const std::vector<int16_t>& data) {
@@ -237,18 +271,23 @@ void CustomWakeWord::FeedSamples(const int16_t* data, size_t samples, bool mono)
                 ESP_LOGI(TAG, "Custom wake word detected: command_id=%d, string=%s, prob=%f", 
                         mn_result->command_id[i], mn_result->string, mn_result->prob[i]);
                 auto& command = commands_[mn_result->command_id[i] - 1];
-                if (command.action == "wake" && !TenagaCukup()) {
+                const int puncak = TenagaPuncak();
+                const int ambang = AmbangSekarang();
+                if (command.action == "wake" && puncak < ambang) {
                     const int64_t sekarang = esp_timer_get_time();
-                    if (sekarang - waktu_tolak_terakhir_us_ > kJedaCatatanTolakUs) {
-                        waktu_tolak_terakhir_us_ = sekarang;
+                    if (sekarang - waktu_catat_terakhir_us_ > kJedaCatatanTolakUs) {
+                        waktu_catat_terakhir_us_ = sekarang;
                         ESP_LOGI(TAG,
-                                 "Kata pemicu ditolak karena terlalu pelan, "
-                                 "tenaga %d di bawah ambang %d",
-                                 (int)riwayat_tenaga_[(indeks_tenaga_ + kJumlahRiwayatTenaga - 1) %
-                                                      kJumlahRiwayatTenaga],
-                                 (int)CONFIG_WAKE_WORD_MIN_RMS);
+                                 "Kata pemicu ditolak, tenaga %d di bawah ambang %d "
+                                 "(kebisingan latar %d)",
+                                 puncak, ambang, (int)lantai_bising_);
                     }
                     continue;
+                }
+                if (command.action == "wake") {
+                    ESP_LOGI(TAG, "Kata pemicu diterima, tenaga %d melewati ambang %d "
+                                  "(kebisingan latar %d)",
+                             puncak, ambang, (int)lantai_bising_);
                 }
                 if (command.action == "wake") {
                     last_detected_wake_word_ = command.text;

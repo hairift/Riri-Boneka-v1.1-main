@@ -55,7 +55,7 @@ private:
     std::deque<Command> commands_;
 
     // ----------------------------------------------------------------------
-    // Gerbang tenaga suara
+    // Gerbang kenyaringan
     //
     // Nilai kemiripan tidak dapat memisahkan kata pemicu asli dari yang palsu.
     // Pada pengukuran di perangkat, kata pemicu asli bernilai 0,139 sampai
@@ -63,21 +63,31 @@ private:
     // rentangnya bertumpang tindih seluruhnya. Menaikkan ambang kemiripan
     // hanya akan ikut membuang panggilan yang benar.
     //
-    // Yang membedakan keduanya adalah kenyaringan. Pengguna memanggil dari
-    // jarak dekat, sedangkan percakapan orang lain di ruangan ramai terdengar
-    // jauh lebih pelan. Gerbang ini menolak deteksi yang tenaganya di bawah
-    // ambang, sehingga suara latar tidak lagi membangunkan perangkat.
+    // Yang membedakan keduanya adalah jarak. Pengguna memanggil dari dekat,
+    // sedangkan percakapan orang lain di ruangan ramai terdengar jauh lebih
+    // pelan dan justru menjadi kebisingan latar.
+    //
+    // Perbandingannya dibuat relatif terhadap kebisingan latar, bukan terhadap
+    // angka tetap. Ambang tetap tidak dapat dikalibrasi sekali untuk semua
+    // tempat: angka yang cukup di ruangan sepi menjadi terlalu rendah di
+    // ruangan ramai, dan sebaliknya angka yang cukup di ruangan ramai membuat
+    // panggilan di ruangan sepi ikut terbuang.
     // ----------------------------------------------------------------------
     void PerbaruiTenaga(const int16_t* data, size_t samples);
-    bool TenagaCukup() const;
+    int TenagaPuncak() const;
+    int AmbangSekarang() const;
 
-    // Tenaga tertinggi pada beberapa potongan terakhir, dalam satuan RMS.
-    // Riwayat dipakai supaya awal kata yang pelan tidak menggagalkan gerbang
-    // ketika bagian tengahnya sudah nyaring.
-    static constexpr int kJumlahRiwayatTenaga = 8;
+    // Tenaga beberapa potongan terakhir, dalam satuan RMS. Riwayat dipakai
+    // supaya awal kata yang pelan tidak menggagalkan gerbang ketika bagian
+    // tengahnya sudah nyaring.
+    static constexpr int kJumlahRiwayatTenaga = 12;
     int16_t riwayat_tenaga_[kJumlahRiwayatTenaga] = {0};
     int indeks_tenaga_ = 0;
-    int64_t waktu_tolak_terakhir_us_ = 0;
+
+    // Perkiraan kebisingan latar. Turun cepat dan naik lambat, sehingga yang
+    // terlacak adalah kebisingan ruangan, bukan suara orang berbicara.
+    float lantai_bising_ = 0.0f;
+    int64_t waktu_catat_terakhir_us_ = 0;
  
     std::function<void(const std::string& wake_word)> wake_word_detected_callback_;
     AudioCodec* codec_ = nullptr;

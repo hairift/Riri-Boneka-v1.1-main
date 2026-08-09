@@ -865,26 +865,46 @@ config CUSTOM_WAKE_WORD_THRESHOLD
         Custom Wake Word Threshold, range 1-99, the smaller the more sensitive, default 20
 
 config WAKE_WORD_MIN_RMS
-    int "Ambang kenyaringan kata pemicu (RMS)"
-    default 1200
+    int "Ambang dasar kenyaringan kata pemicu (RMS)"
+    default 250
     range 0 8000
     depends on USE_CUSTOM_WAKE_WORD
     help
-        Deteksi kata pemicu yang tenaganya di bawah nilai ini ditolak.
+        Batas bawah kenyaringan yang harus dilewati sebuah deteksi kata pemicu.
 
-        Nilai kemiripan tidak dapat memisahkan kata pemicu asli dari yang
-        palsu. Pada pengukuran di perangkat, kata pemicu asli bernilai 0,139
-        sampai 0,257 sedangkan yang palsu bernilai 0,162 sampai 0,207,
-        sehingga rentangnya bertumpang tindih seluruhnya.
+        Ambang sebenarnya adalah nilai terbesar antara angka ini dan hasil
+        perkalian kebisingan latar dengan WAKE_WORD_NOISE_RATIO. Angka ini
+        hanya menjaga agar dalam keheningan total ambangnya tidak menjadi nol,
+        sehingga desis mikrofon pun tidak akan pernah cukup.
 
-        Yang membedakan keduanya adalah kenyaringan. Pengguna memanggil dari
-        jarak dekat, sedangkan percakapan orang lain di ruangan ramai
-        terdengar jauh lebih pelan. Rekaman uji ucapan pengguna bernilai
-        sekitar 3300 RMS, jadi 1200 memberi jarak aman yang lebar.
+        Naikkan bila perangkat masih terbangun sendiri di ruangan yang sangat
+        sepi. Isi nol untuk mengandalkan perbandingan relatif saja.
 
-        Naikkan bila perangkat masih terbangun sendiri di tempat ramai.
-        Turunkan bila panggilan yang benar mulai terabaikan. Isi nol untuk
-        mematikan penyaringan ini sepenuhnya.
+config WAKE_WORD_NOISE_RATIO
+    int "Rasio kenyaringan terhadap kebisingan latar (per sepuluh)"
+    default 25
+    range 10 100
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Panggilan harus sekian kali lebih nyaring daripada kebisingan latar,
+        dinyatakan per sepuluh. Nilai 25 berarti dua setengah kali, yaitu
+        sekitar delapan desibel di atas kebisingan sekitar.
+
+        Perbandingan dibuat relatif karena ambang tetap tidak dapat
+        dikalibrasi sekali untuk semua tempat. Angka yang cukup di ruangan
+        sepi menjadi terlalu rendah di ruangan ramai, dan sebaliknya angka
+        yang cukup di ruangan ramai membuat panggilan di ruangan sepi ikut
+        terbuang.
+
+        Setiap deteksi mencatat tenaga, ambang, dan kebisingan latarnya di
+        log, baik yang diterima maupun yang ditolak, sehingga nilainya dapat
+        disetel dari angka yang sebenarnya terjadi:
+
+            I CustomWakeWord: Kata pemicu diterima, tenaga 1840 melewati
+            ambang 620 (kebisingan latar 248)
+
+        Naikkan bila perangkat masih terbangun oleh suara orang lain.
+        Turunkan bila panggilan yang benar mulai terabaikan.
 
 config SEND_WAKE_WORD_DATA
     bool "Send Wake Word Data"
