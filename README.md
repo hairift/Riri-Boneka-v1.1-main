@@ -6,6 +6,12 @@ Riri dapat diajak bicara, menjawab pertanyaan tentang Universitas Catur Insan
 Cendekia, mencari informasi terbaru dari internet, memutar lagu, dan bereaksi
 saat bagian tubuhnya disentuh.
 
+**Versi V1.1.**
+
+## Pratinjau Perangkat
+
+<img src="docs/boneka_riri/Boneka%20Riri.png" width="380">
+
 ## Perangkat Keras
 
 | Komponen | Keterangan |
@@ -15,7 +21,8 @@ saat bagian tubuhnya disentuh.
 | Penguat suara | MAX98357 I2S 3 W |
 | Pengeras suara | 8 ohm 3 W |
 | Layar | OLED SSD1306 0,96 inci lewat I2C, sifatnya opsional |
-| Lampu indikator | LED RGB WS2812 bawaan papan |
+| Lampu indikator | LED RGB WS2812 bawaan papan, ditambah satu LED RGB status |
+| Penunjuk baterai | Modul penunjuk kapasitas baterai lithium yang berdiri sendiri |
 | Sensor sentuh | Foil tembaga pada delapan bagian tubuh |
 | Daya | Modul powerbank dengan penaik tegangan 5 V |
 | Pendingin | Kipas DC 5 V, tersambung langsung ke jalur 5 V |
@@ -114,6 +121,20 @@ Rincian lengkap ada di [panduan build dan flash](docs/riri-build.md).
 
 Urutan ini membuat pertanyaan tentang kampus selalu punya jawaban walaupun
 server sedang mati atau internet sedang bermasalah.
+
+## Versi
+
+Proyek ini adalah **V1.1**. Baris berikut muncul paling awal di monitor:
+
+```text
+I main: Riri Boneka AI V1.1
+```
+
+Angka `App version` yang muncul tepat sesudahnya adalah versi firmware hulu,
+bukan versi proyek ini, dan sengaja dibiarkan apa adanya. Angka itu dipakai
+server OTA untuk membandingkan versi, dan pembaruan berjalan otomatis saat
+boot. Menurunkannya membuat server menganggap ada versi yang lebih baru,
+sehingga seluruh kustomisasi di sini akan tertimpa firmware hulu.
 
 ## Catatan Rilis
 

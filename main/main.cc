@@ -11,6 +11,14 @@
 
 #define TAG "main"
 
+// Versi proyek ini, terpisah dari PROJECT_VER.
+//
+// PROJECT_VER sengaja dibiarkan mengikuti versi firmware hulu karena angka itu
+// dipakai server OTA untuk membandingkan versi. Menurunkannya membuat server
+// menganggap ada versi yang lebih baru, dan pembaruan berjalan otomatis saat
+// boot, sehingga seluruh kustomisasi di sini akan tertimpa firmware hulu.
+#define VERSI_RIRI "V1.1"
+
 extern "C" void app_main(void)
 {
     // Initialize NVS flash for WiFi configuration
@@ -21,6 +29,8 @@ extern "C" void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    ESP_LOGI(TAG, "Riri Boneka AI %s", VERSI_RIRI);
 
     // Initialize and run the application
     auto& app = Application::GetInstance();
