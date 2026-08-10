@@ -160,6 +160,31 @@ selama itu perangkat berstatus menganggur. Di ruangan ramai, satu kata pemicu
 palsu pada rentang itu membatalkan permintaan lagu yang sudah berjalan,
 sehingga lagunya tidak pernah jadi diputar.
 
+### Rantai perlindungan musik
+
+Deteksi kata pemicu dimatikan pada tiga titik yang berbeda, dan ketiganya
+diperlukan:
+
+| Titik | Menutup |
+|---|---|
+| `MusicPlayer::Play` | Seluruh masa pencarian, pengunduhan, dan penyiapan |
+| `Application::OnStateChanged` saat menganggur | Penyalaan ulang oleh perpindahan status |
+| `MusicPlayer::RunDecoder` | Masa lagu benar-benar berbunyi |
+
+Titik kedua paling mudah terlewat. Pemutar musik sendiri yang meminta perangkat
+kembali menganggur lewat `EndConversation`, supaya lagu tidak masuk ke
+mikrofon. Tanpa penjagaan, perpindahan status itu justru menyalakan ulang
+deteksi yang baru saja dimatikan pemutar musik, dan deteksi itu tetap menyala
+sepanjang lagu dicari dan diunduh.
+
+Pada jaringan ramai, satu kata pemicu palsu di rentang dua puluh sampai empat
+puluh detik itu membatalkan permintaan lagu yang sudah berjalan, sehingga
+lagunya tidak pernah jadi diputar.
+
+Karena ketiganya sudah menutup jalur yang berbahaya, gerbang kenyaringan tidak
+perlu dibuat ketat. Kata pemicu palsu saat perangkat menganggur memang
+mengganggu, tetapi tidak merusak apa pun.
+
 ## Jaringan yang Padat
 
 Penyangga penerimaan Wi-Fi dinaikkan dari nilai bawaan proyek hulu.

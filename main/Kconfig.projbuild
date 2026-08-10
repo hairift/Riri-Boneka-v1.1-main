@@ -866,7 +866,7 @@ config CUSTOM_WAKE_WORD_THRESHOLD
 
 config WAKE_WORD_MIN_RMS
     int "Ambang dasar kenyaringan kata pemicu (RMS)"
-    default 250
+    default 60
     range 0 8000
     depends on USE_CUSTOM_WAKE_WORD
     help
@@ -882,13 +882,18 @@ config WAKE_WORD_MIN_RMS
 
 config WAKE_WORD_NOISE_RATIO
     int "Rasio kenyaringan terhadap kebisingan latar (per sepuluh)"
-    default 25
+    default 14
     range 10 100
     depends on USE_CUSTOM_WAKE_WORD
     help
         Panggilan harus sekian kali lebih nyaring daripada kebisingan latar,
-        dinyatakan per sepuluh. Nilai 25 berarti dua setengah kali, yaitu
-        sekitar delapan desibel di atas kebisingan sekitar.
+        dinyatakan per sepuluh. Nilai 14 berarti satu koma empat kali, yaitu
+        sekitar tiga desibel di atas kebisingan sekitar.
+
+        Nilai ini sengaja rendah. Penyaring utama terhadap kata pemicu palsu
+        bukan gerbang ini, melainkan mematikan deteksi sepenuhnya selama
+        perangkat berbicara dan selama lagu disiapkan maupun diputar. Gerbang
+        ini hanya menolak bunyi yang tingkatnya memang setara latar belakang.
 
         Perbandingan dibuat relatif karena ambang tetap tidak dapat
         dikalibrasi sekali untuk semua tempat. Angka yang cukup di ruangan

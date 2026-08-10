@@ -1064,7 +1064,19 @@ void Application::HandleStateChangedEvent() {
             display->ClearChatMessages();    // Clear messages first
             display->SetEmotion("neutral");  // Then set emotion (wechat mode checks child count)
             audio_service_.EnableVoiceProcessing(false);
-            audio_service_.EnableWakeWordDetection(true);
+            // Kata pemicu tidak dinyalakan kembali selama pemutar musik masih
+            // bekerja.
+            //
+            // Pemutar musik sendiri yang meminta perangkat kembali menganggur,
+            // lewat EndConversation, supaya lagu tidak masuk ke mikrofon.
+            // Tanpa penjagaan ini, perpindahan status itu justru menyalakan
+            // ulang deteksi yang baru saja dimatikan pemutar musik, dan
+            // deteksi itu tetap menyala sepanjang lagu dicari dan diunduh.
+            //
+            // Pada jaringan ramai, satu kata pemicu palsu di rentang dua puluh
+            // sampai empat puluh detik itu membatalkan permintaan lagu yang
+            // sudah berjalan, sehingga lagunya tidak pernah jadi diputar.
+            audio_service_.EnableWakeWordDetection(!MusicPlayer::GetInstance().IsPlaying());
             break;
         case kDeviceStateConnecting:
             display->SetStatus(Lang::Strings::CONNECTING);

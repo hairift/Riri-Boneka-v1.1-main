@@ -80,7 +80,12 @@ private:
     // Tenaga beberapa potongan terakhir, dalam satuan RMS. Riwayat dipakai
     // supaya awal kata yang pelan tidak menggagalkan gerbang ketika bagian
     // tengahnya sudah nyaring.
-    static constexpr int kJumlahRiwayatTenaga = 12;
+    //
+    // Dua puluh potongan setara sekitar enam ratus milidetik, yaitu cukup
+    // untuk mencakup satu ucapan "hai hai" penuh. Jendela yang lebih pendek
+    // hanya mencakup separuhnya, sehingga ucapan yang bagian kerasnya berada
+    // di awal dapat luput dari penilaian.
+    static constexpr int kJumlahRiwayatTenaga = 20;
     int16_t riwayat_tenaga_[kJumlahRiwayatTenaga] = {0};
     int indeks_tenaga_ = 0;
 

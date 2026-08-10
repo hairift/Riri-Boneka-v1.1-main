@@ -14,11 +14,11 @@
 #define TAG "CustomWakeWord"
 
 #ifndef CONFIG_WAKE_WORD_MIN_RMS
-#define CONFIG_WAKE_WORD_MIN_RMS 250
+#define CONFIG_WAKE_WORD_MIN_RMS 60
 #endif
 
 #ifndef CONFIG_WAKE_WORD_NOISE_RATIO
-#define CONFIG_WAKE_WORD_NOISE_RATIO 25
+#define CONFIG_WAKE_WORD_NOISE_RATIO 14
 #endif
 
 namespace {
