@@ -10,7 +10,9 @@ saat bagian tubuhnya disentuh.
 
 ## Pratinjau Perangkat
 
-<img src="docs/boneka_riri/Boneka%20Riri.png" width="380">
+<div align="center">
+  <img src="docs/boneka_riri/Boneka%20Riri.png" width="380">
+</div>
 
 ## Perangkat Keras
 
