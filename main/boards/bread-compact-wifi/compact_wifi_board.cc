@@ -124,7 +124,8 @@ private:
         // memakai foil tembaga dan kata pemicu suara.
         boot_button_.OnClick([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting) {
+            if (app.GetDeviceState() == kDeviceStateStarting ||
+                app.GetDeviceState() == kDeviceStateActivating) {
                 EnterWifiConfigMode();
                 return;
             }
@@ -142,7 +143,9 @@ private:
     // Inisialisasi alat MCP, sensor sentuh, dan basis pengetahuan kampus.
     void InitializeTools() {
         static LampController lamp(LAMP_GPIO);
-        RiriTouchController::GetInstance().Initialize();
+        RiriTouchController::GetInstance().Initialize([this]() {
+            EnterWifiConfigMode();
+        });
         RiriRgbIndicator::GetInstance().Initialize();
         static CampusMcpTools campus_mcp;
     }

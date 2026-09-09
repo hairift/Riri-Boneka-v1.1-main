@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <esp_log.h>
+#include <nvs.h>
 
 #define TAG "RiriTouch"
 
@@ -18,6 +19,11 @@ namespace {
 // Interval sampel 50 ms adalah nilai yang dulu terbukti stabil di perangkat.
 constexpr int kSampleIntervalMs = 50;
 constexpr int kStartupSettleMs = 1200;
+// Selama Riri masih menyambung Wi-Fi atau aktivasi AI, tangan kanan adalah
+// tombol konfigurasi Wi-Fi. Masa ini cukup panjang untuk mencakup koneksi yang
+// lambat, tetapi berhenti otomatis begitu Riri sudah siap dipakai.
+constexpr int kStartupWifiGestureTimeoutMs = 30000;
+constexpr int kBootGestureStableSamplesRequired = 10;
 constexpr int kCalibrationSamples = 32;
 constexpr int kCalibrationSampleDelayMs = 20;
 
@@ -66,6 +72,9 @@ constexpr int kStuckSamplesBeforeRebase = 60;           // sekitar 3 detik pada 
 // Batas foil terkunci dalam keadaan tertekan sebelum dilepas paksa.
 constexpr int kStuckPressedSamplesBeforeRelease = 600;   // sekitar 30 detik pada 50 ms
 
+constexpr const char* kTouchSettingsNamespace = "riri_touch";
+constexpr const char* kRightHandBaselineKey = "right_hand_base";
+
 RiriTouchPoint kTouchPoints[] = {
     {"kepala",       RIRI_TOUCH_HEAD_GPIO,       TOUCH_PAD_NUM1,  "Tidur.ogg",  RiriTouchAction::PLAY_ONLY},
     {"idung",        RIRI_TOUCH_NOSE_GPIO,       TOUCH_PAD_NUM2,  "Idung.ogg",  RiriTouchAction::PLAY_ONLY},
@@ -96,10 +105,13 @@ int TouchPadIndex(const RiriTouchPoint& point) {
 
 }  // namespace
 
-void RiriTouchController::Initialize() {
+void RiriTouchController::Initialize(WifiConfigRequestCallback wifi_config_request_callback) {
     if (initialized_) {
         return;
     }
+
+    wifi_config_request_callback_ = std::move(wifi_config_request_callback);
+    saved_right_hand_baseline_ = LoadSavedRightHandBaseline();
 
     esp_err_t err = touch_pad_init();
     if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
@@ -145,6 +157,83 @@ void RiriTouchController::Initialize() {
     ESP_LOGI(TAG, "Sensor sentuh Riri siap");
 }
 
+uint32_t RiriTouchController::LoadSavedRightHandBaseline() const {
+    nvs_handle_t handle = 0;
+    uint32_t baseline = 0;
+    if (nvs_open(kTouchSettingsNamespace, NVS_READONLY, &handle) == ESP_OK) {
+        nvs_get_u32(handle, kRightHandBaselineKey, &baseline);
+        nvs_close(handle);
+    }
+    return baseline;
+}
+
+void RiriTouchController::SaveRightHandBaseline(uint32_t baseline) const {
+    if (baseline == 0) {
+        return;
+    }
+
+    nvs_handle_t handle = 0;
+    if (nvs_open(kTouchSettingsNamespace, NVS_READWRITE, &handle) != ESP_OK) {
+        ESP_LOGW(TAG, "Baseline tangan kanan tidak dapat disimpan ke NVS");
+        return;
+    }
+    if (nvs_set_u32(handle, kRightHandBaselineKey, baseline) == ESP_OK) {
+        nvs_commit(handle);
+    } else {
+        ESP_LOGW(TAG, "Gagal menyimpan baseline tangan kanan");
+    }
+    nvs_close(handle);
+}
+
+void RiriTouchController::MonitorStartupWifiConfigGesture() {
+    constexpr RiriTouchPoint right_hand = {
+        "tangan kanan", RIRI_TOUCH_RIGHT_HAND_GPIO, TOUCH_PAD_NUM11, "Aktif.ogg", RiriTouchAction::WAKE_AI};
+    const int index = TouchPadIndex(right_hand);
+    if (!touch_driver_ready_ || !enabled_[index]) {
+        return;
+    }
+
+    // Baseline tersimpan membuat gesture tetap dapat dikenali bila tangan sudah
+    // memegang foil sebelum ESP32-S3 dinyalakan. Bila firmware baru pertama
+    // kali dipasang, gunakan kalibrasi boot ini; pengguna cukup menyentuh
+    // sesudah log boot mulai atau memakai tombol BOOT satu kali.
+    const uint32_t baseline = saved_right_hand_baseline_ != 0
+        ? saved_right_hand_baseline_
+        : baselines_[index];
+    if (baseline == 0) {
+        return;
+    }
+
+    ESP_LOGI(TAG, "Sentuh tangan kanan sebelum AI siap untuk konfigurasi Wi-Fi");
+    int stable_samples = 0;
+    const int attempts = kStartupWifiGestureTimeoutMs / kSampleIntervalMs;
+    for (int attempt = 0; attempt < attempts; ++attempt) {
+        const auto state = Application::GetInstance().GetDeviceState();
+        if (state != kDeviceStateStarting && state != kDeviceStateActivating) {
+            return;
+        }
+
+        uint32_t raw = 0;
+        if (touch_pad_read_raw_data(right_hand.touch_pad, &raw) == ESP_OK &&
+            raw > baseline &&
+            ((static_cast<uint64_t>(raw - baseline) * 1000U) / baseline) >= kTouchRisePermille) {
+            ++stable_samples;
+            if (stable_samples >= kBootGestureStableSamplesRequired) {
+                ESP_LOGI(TAG, "Tangan kanan disentuh: membuka konfigurasi Wi-Fi");
+                if (wifi_config_request_callback_) {
+                    wifi_config_request_callback_();
+                } else {
+                    ESP_LOGE(TAG, "Callback konfigurasi Wi-Fi belum dipasang");
+                }
+                return;
+            }
+        } else {
+            stable_samples = 0;
+        }
+        vTaskDelay(pdMS_TO_TICKS(kSampleIntervalMs));
+    }
+}
+
 bool RiriTouchController::ConfigureTouchPoint(RiriTouchPoint& point) {
     if (!touch_driver_ready_) {
         return false;
@@ -160,7 +249,7 @@ bool RiriTouchController::ConfigureTouchPoint(RiriTouchPoint& point) {
     return true;
 }
 
-void RiriTouchController::CalibrateAllPoints() {
+void RiriTouchController::CalibrateAllPoints(bool save_right_hand_baseline) {
     // Seluruh foil dikalibrasi berbarengan secara bergiliran, bukan satu per
     // satu sampai selesai.
     //
@@ -214,6 +303,10 @@ void RiriTouchController::CalibrateAllPoints() {
         }
         const int used = count - (trim * 2);
         baselines_[index] = static_cast<uint32_t>(sum / used);
+
+        if (save_right_hand_baseline && point.touch_pad == TOUCH_PAD_NUM11) {
+            SaveRightHandBaseline(baselines_[index]);
+        }
 
         // Sebaran sampel menjadi petunjuk apakah jalur foil itu berisik.
         // Foil dengan sebaran lebar mudah salah picu, jadi harus terlihat jelas
@@ -358,6 +451,12 @@ void RiriTouchController::Run() {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
+    // Tangan kanan dipantau sepanjang Riri menyambung Wi-Fi atau mengaktifkan
+    // AI. Pada fase ini sentuhan tidak memutar Aktif.ogg: ia selalu membuka
+    // konfigurasi Wi-Fi. Setelah Riri idle, alur sentuh biasa di bawah tetap
+    // mempertahankan reaksi suara dan fungsi membangunkan AI.
+    MonitorStartupWifiConfigGesture();
+
     // Tunggu sampai perangkat benar-benar tenang sebelum mengambil garis dasar
     // yang dipakai sungguhan.
     //
@@ -385,7 +484,7 @@ void RiriTouchController::Run() {
     vTaskDelay(pdMS_TO_TICKS(kPostSettleDelayMs));
 
     if (touch_driver_ready_) {
-        CalibrateAllPoints();
+        CalibrateAllPoints(true);
         ESP_LOGI(TAG, "Kalibrasi akhir selesai, sensor sentuh aktif dalam %d ms",
             kArmingDelayMs);
     }

@@ -6,6 +6,7 @@
 #include <freertos/task.h>
 
 #include <cstdint>
+#include <functional>
 #include <string_view>
 
 enum class RiriTouchAction {
@@ -23,12 +24,14 @@ struct RiriTouchPoint {
 
 class RiriTouchController {
 public:
+    using WifiConfigRequestCallback = std::function<void()>;
+
     static RiriTouchController& GetInstance() {
         static RiriTouchController instance;
         return instance;
     }
 
-    void Initialize();
+    void Initialize(WifiConfigRequestCallback wifi_config_request_callback);
 
 private:
     RiriTouchController() = default;
@@ -37,7 +40,10 @@ private:
     static void TouchTask(void* arg);
     void Run();
     bool ConfigureTouchPoint(RiriTouchPoint& point);
-    void CalibrateAllPoints();
+    void CalibrateAllPoints(bool save_right_hand_baseline = false);
+    void MonitorStartupWifiConfigGesture();
+    uint32_t LoadSavedRightHandBaseline() const;
+    void SaveRightHandBaseline(uint32_t baseline) const;
     int RisePermille(const RiriTouchPoint& point, uint32_t raw_value) const;
     bool IsTouched(RiriTouchPoint& point, uint32_t raw_value);
     bool IsReleased(RiriTouchPoint& point, uint32_t raw_value);
@@ -56,4 +62,6 @@ private:
     bool pressed_[TOUCH_PAD_MAX] = {};
     TickType_t last_trigger_ticks_[TOUCH_PAD_MAX] = {};
     TickType_t last_any_wake_ticks_ = 0;
+    uint32_t saved_right_hand_baseline_ = 0;
+    WifiConfigRequestCallback wifi_config_request_callback_;
 };

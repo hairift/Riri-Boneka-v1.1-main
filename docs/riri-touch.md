@@ -21,6 +21,21 @@ Pada ESP32-S3, kanal sentuh nomor N selalu berada di GPIO nomor N. Firmware
 memeriksa kecocokan ini saat menyala dan menolak memasang foil yang pemetaannya
 salah, sehingga kesalahan kabel langsung terlihat di log.
 
+## Masuk Konfigurasi Wi-Fi dengan Tangan Kanan
+
+Sentuh foil **tangan kanan** kapan saja selama Riri masih mencoba Wi-Fi atau
+mengaktifkan AI. Jika sentuhan stabil sekitar setengah detik, Riri langsung
+membuka konfigurasi Wi-Fi dan menghentikan percobaan Wi-Fi lama. Sesudah perangkat
+masuk AI atau sudah dapat diajak bicara, tangan kanan kembali memiliki perilaku
+normal: memutar `Aktif.ogg` lalu membangunkan AI.
+
+Baseline tangan kanan disimpan setelah kalibrasi akhir pada boot normal. Ini
+membuat gesture tetap terbaca walaupun foil sudah dipegang sebelum ESP32-S3
+dinyalakan. Pada boot pertama setelah memasang firmware ini, biarkan tangan
+kanan tidak disentuh sampai kalibrasi selesai sekali; setelah itu fitur tahan
+tangan kanan saat boot siap dipakai. Tombol BOOT tetap dapat dipakai sebagai
+jalur cadangan konfigurasi Wi-Fi.
+
 ### Kenapa idung memakai GPIO2 dan bukan GPIO5
 
 `GPIO5` sudah dipakai sebagai jalur **SCK mikrofon INMP441**. Satu pin hanya
