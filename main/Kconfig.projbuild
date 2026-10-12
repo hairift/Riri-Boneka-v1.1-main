@@ -941,6 +941,28 @@ config CUSTOM_WAKE_WORD_DISPLAY
     help
         Greeting sent to the server after wake word detection
 
+config CUSTOM_WAKE_WORD_EXTRA
+    string "Kata pemicu tambahan"
+    default ""
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Kata pemicu kedua untuk perangkat ini, ditulis dalam pinyin dan
+        dipisah spasi, sama seperti Custom Wake Word. Kosongkan bila
+        perangkat hanya memakai satu kata pemicu.
+
+        Kata pemicu kedua ini tidak menggantikan kata pemicu utama,
+        sehingga perangkat dapat dibangunkan oleh salah satu dari keduanya.
+        Daftar perintah multinet tetap unik karena entri yang sama akan
+        diabaikan saat aset dibangun.
+
+config CUSTOM_WAKE_WORD_EXTRA_DISPLAY
+    string "Tampilan kata pemicu tambahan"
+    default ""
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Teks sapaan yang dikirim ke server saat kata pemicu tambahan yang
+        terdeteksi. Kosongkan bila tidak dipakai.
+
 config CUSTOM_WAKE_WORD_THRESHOLD
     int "Custom Wake Word Threshold (%)"
     default 20

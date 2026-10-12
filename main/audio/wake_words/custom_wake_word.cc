@@ -270,7 +270,17 @@ void CustomWakeWord::FeedSamples(const int16_t* data, size_t samples, bool mono)
             for (int i = 0; i < mn_result->num && running_; i++) {
                 ESP_LOGI(TAG, "Custom wake word detected: command_id=%d, string=%s, prob=%f", 
                         mn_result->command_id[i], mn_result->string, mn_result->prob[i]);
-                auto& command = commands_[mn_result->command_id[i] - 1];
+                // Penjaga batas: dengan lebih dari satu kata pemicu, id yang
+                // dikembalikan multinet harus tetap menunjuk entri yang ada.
+                // Bila tidak, deteksi dilewati supaya tidak membaca di luar
+                // daftar commands_.
+                const int indeks_perintah = mn_result->command_id[i] - 1;
+                if (indeks_perintah < 0 || indeks_perintah >= (int)commands_.size()) {
+                    ESP_LOGW(TAG, "ID perintah %d di luar daftar kata pemicu (%d entri), dilewati",
+                             mn_result->command_id[i], (int)commands_.size());
+                    continue;
+                }
+                auto& command = commands_[indeks_perintah];
                 const int puncak = TenagaPuncak();
                 const int ambang = AmbangSekarang();
                 if (command.action == "wake" && puncak < ambang) {

@@ -2,6 +2,7 @@ tmp/
 components/
 managed_components/
 build/
+build-*/
 dist/
 .vscode/
 .devcontainer/
