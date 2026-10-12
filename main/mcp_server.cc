@@ -621,8 +621,6 @@ void McpServer::DoToolCall(int id, const std::string& tool_name, const cJSON* to
         }
     }
 
-    McpTool* tool = *tool_iter;
-
     // Alat cepat tetap dijalankan di tugas utama seperti perilaku bawaan.
     if (tool->run_on_main_thread()) {
         auto& app = Application::GetInstance();
@@ -674,5 +672,4 @@ void McpServer::ExecuteToolCall(int id, McpTool* tool, const PropertyList& argum
         return;
     }
     ReplyResult(id, *result, response_sender);
-}
 }

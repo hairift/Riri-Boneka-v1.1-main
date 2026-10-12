@@ -504,7 +504,7 @@ void AudioService::OpusCodecTask() {
                     }
                     // Tambahan Riri Boneka: kuatkan hanya suara lokal.
                     if (packet->boost_volume) {
-                        BoostLocalPromptPcm(task->pcm);
+                        BoostLocalPromptPcm(task.pcm);
                     }
                     decoded = true;
                 } else {
@@ -917,9 +917,9 @@ bool AudioService::PushPcmToPlaybackQueue(std::vector<int16_t>&& pcm, int timeou
         }
     }
 
-    auto task = std::make_unique<AudioTask>();
-    task->type = kAudioTaskTypeDecodeToPlaybackQueue;
-    task->pcm = std::move(pcm);
+    AudioTask task{};
+    task.type = kAudioTaskTypeDecodeToPlaybackQueue;
+    task.pcm = std::move(pcm);
     audio_playback_queue_.push_back(std::move(task));
     audio_queue_cv_.notify_all();
     return true;

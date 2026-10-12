@@ -101,12 +101,13 @@ bool ReadHttpLimited(std::unique_ptr<Http>& http, std::string& response) {
     int total = 0;
     while (total < kCampusRagMaxResponseBytes) {
         int to_read = std::min(static_cast<int>(sizeof(chunk)), kCampusRagMaxResponseBytes - total);
-        int read = http->Read(chunk, to_read);
-        if (read <= 0) {
+        // Pembaruan hulu v2.5.2: Read mengembalikan NetworkResult<int>.
+        auto read = http->Read(chunk, to_read);
+        if (!read || *read <= 0) {
             break;
         }
-        response.append(chunk, read);
-        total += read;
+        response.append(chunk, *read);
+        total += *read;
     }
 
     if (total >= kCampusRagMaxResponseBytes) {
@@ -155,9 +156,16 @@ const char* QueryCampusRagServer(const char* query, char* buf, int buf_size) {
         return nullptr;
     }
 
-    int status_code = http->GetStatusCode();
-    if (status_code != 200) {
-        ESP_LOGW(TAG, "Campus RAG Server status HTTP %d", status_code);
+    // Pembaruan hulu v2.5.2: GetStatusCode mengembalikan NetworkResult<int>.
+    auto status_code = http->GetStatusCode();
+    if (!status_code) {
+        ESP_LOGW(TAG, "Gagal membaca status HTTP Campus RAG Server");
+        http->Close();
+        MarkCampusRagFailure();
+        return nullptr;
+    }
+    if (*status_code != 200) {
+        ESP_LOGW(TAG, "Campus RAG Server status HTTP %d", *status_code);
         http->Close();
         MarkCampusRagFailure();
         return nullptr;

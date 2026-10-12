@@ -660,14 +660,6 @@ def read_custom_wake_word_from_sdkconfig(sdkconfig_path):
                 # Extract string value (remove quotes)
                 value = line.split('=', 1)[1].strip('"')
                 config_values['display'] = value
-            elif 'CONFIG_CUSTOM_WAKE_WORD_EXTRA=' in line and not line.startswith('#'):
-                # Kata pemicu tambahan (opsional), dalam bentuk pinyin
-                value = line.split('=', 1)[1].strip('"')
-                config_values['wake_word_extra'] = value
-            elif 'CONFIG_CUSTOM_WAKE_WORD_EXTRA_DISPLAY=' in line and not line.startswith('#'):
-                # Tampilan kata pemicu tambahan (opsional)
-                value = line.split('=', 1)[1].strip('"')
-                config_values['display_extra'] = value
             elif 'CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=' in line and not line.startswith('#'):
                 # Extract numeric value
                 value = line.split('=', 1)[1]
@@ -688,8 +680,6 @@ def read_custom_wake_word_from_sdkconfig(sdkconfig_path):
         return {
             'wake_word': config_values['wake_word'],
             'display': config_values['display'],
-            'wake_word_extra': config_values.get('wake_word_extra', '').strip(),
-            'display_extra': config_values.get('display_extra', '').strip(),
             'threshold': config_values['threshold'] / 100.0  # Convert to decimal (20 -> 0.2)
         }
     
@@ -990,34 +980,18 @@ def main():
         # Determine language from multinet models
         language = get_language_from_multinet_models(multinet_model_names)
         
-        # Susun daftar perintah kata pemicu. Perintah pertama selalu kata
-        # pemicu utama, sedangkan perintah kedua ditambahkan bila kata pemicu
-        # tambahan diisi dan berbeda dari yang utama. Entri yang sama persis
-        # dilewati supaya penomoran perintah multinet tetap satu-satu dengan
-        # daftar commands_ di sisi firmware.
-        commands = [
-            {
-                "command": custom_wake_word_config['wake_word'],
-                "text": custom_wake_word_config['display'],
-                "action": "wake"
-            }
-        ]
-        kata_extra = custom_wake_word_config.get('wake_word_extra', '')
-        tampil_extra = custom_wake_word_config.get('display_extra', '')
-        if kata_extra and kata_extra != custom_wake_word_config['wake_word']:
-            commands.append({
-                "command": kata_extra,
-                "text": tampil_extra if tampil_extra else kata_extra,
-                "action": "wake"
-            })
-            print(f"  kata pemicu tambahan: {kata_extra} ({tampil_extra})")
-        
         # Build multinet_model info structure
         multinet_model_info = {
             "language": language,
             "duration": 3000,  # Default duration in ms
             "threshold": custom_wake_word_config['threshold'],
-            "commands": commands
+            "commands": [
+                {
+                    "command": custom_wake_word_config['wake_word'],
+                    "text": custom_wake_word_config['display'],
+                    "action": "wake"
+                }
+            ]
         }
         print(f"  custom wake word: {custom_wake_word_config['wake_word']} ({custom_wake_word_config['display']})")
         print(f"  wake word language: {language}")

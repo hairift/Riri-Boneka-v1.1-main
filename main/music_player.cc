@@ -291,7 +291,15 @@ std::string HttpGetText(const std::string& url, int timeout_ms, size_t max_bytes
             return std::string();
         }
 
-        int status_code = http->GetStatusCode();
+        // Pembaruan hulu v2.5.2: status dan pembacaan mengembalikan
+        // NetworkResult<int>, jadi hasilnya diperiksa lebih dulu.
+        auto status_hasil = http->GetStatusCode();
+        if (!status_hasil) {
+            ESP_LOGW(TAG, "Gagal membaca status HTTP dari %s", current_url.c_str());
+            http->Close();
+            return std::string();
+        }
+        int status_code = *status_hasil;
         if (IsRedirect(status_code)) {
             std::string location = http->GetResponseHeader("location");
             http->Close();
@@ -317,12 +325,12 @@ std::string HttpGetText(const std::string& url, int timeout_ms, size_t max_bytes
         size_t total = 0;
         while (total < max_bytes) {
             int to_read = static_cast<int>(std::min(sizeof(chunk), max_bytes - total));
-            int read = http->Read(chunk, to_read);
-            if (read <= 0) {
+            auto read = http->Read(chunk, to_read);
+            if (!read || *read <= 0) {
                 break;
             }
-            body.append(chunk, read);
-            total += static_cast<size_t>(read);
+            body.append(chunk, *read);
+            total += static_cast<size_t>(*read);
         }
         http->Close();
         return body;
@@ -995,7 +1003,12 @@ void MusicPlayer::RunNetwork() {
             break;
         }
 
-        int status_code = http->GetStatusCode();
+        auto status_hasil = http->GetStatusCode();
+        if (!status_hasil) {
+            ESP_LOGW(TAG, "Gagal membaca status aliran musik");
+            break;
+        }
+        int status_code = *status_hasil;
         if (IsRedirect(status_code)) {
             std::string location = http->GetResponseHeader("location");
             http->Close();
@@ -1027,12 +1040,12 @@ void MusicPlayer::RunNetwork() {
     std::vector<uint8_t> chunk(kNetworkChunkBytes);
     int64_t total = 0;
     while (!stop_requested_.load()) {
-        int read = http->Read(reinterpret_cast<char*>(chunk.data()), static_cast<int>(chunk.size()));
-        if (read <= 0) {
+        auto read = http->Read(reinterpret_cast<char*>(chunk.data()), static_cast<int>(chunk.size()));
+        if (!read || *read <= 0) {
             break;
         }
-        total += read;
-        if (!ring_.Write(chunk.data(), static_cast<size_t>(read))) {
+        total += *read;
+        if (!ring_.Write(chunk.data(), static_cast<size_t>(*read))) {
             break;  // buffer ditutup karena pemutaran dihentikan
         }
     }

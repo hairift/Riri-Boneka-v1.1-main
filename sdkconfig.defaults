@@ -108,10 +108,6 @@ CONFIG_OLED_SSD1306_128X64=y
 CONFIG_USE_CUSTOM_WAKE_WORD=y
 CONFIG_CUSTOM_WAKE_WORD="hai hai"
 CONFIG_CUSTOM_WAKE_WORD_DISPLAY="Hai Hai"
-# Kata pemicu kedua khusus Riri Boneka. Ditulis dalam pinyin karena model
-# multinet yang dipakai berbahasa Mandarin.
-CONFIG_CUSTOM_WAKE_WORD_EXTRA="hei ri ri bo si"
-CONFIG_CUSTOM_WAKE_WORD_EXTRA_DISPLAY="Hey Riri Bos"
 CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=8
 CONFIG_SEND_WAKE_WORD_DATA=y
 

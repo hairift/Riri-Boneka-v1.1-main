@@ -542,7 +542,10 @@ static std::string HttpGet(const char* url, int timeout_ms = 4000) {
     http->SetKeepAlive(false);
     http->SetHeader("User-Agent", "ESP32-Riri-Boneka/1.0");
     if (!http->Open("GET", url)) return "";
-    if (http->GetStatusCode() != 200) {
+    // Pembaruan hulu v2.5.2: status dan pembacaan kini mengembalikan
+    // NetworkResult<int>, jadi nilainya diperiksa sebelum dipakai.
+    auto status_code = http->GetStatusCode();
+    if (!status_code || *status_code != 200) {
         http->Close();
         return "";
     }
@@ -553,10 +556,10 @@ static std::string HttpGet(const char* url, int timeout_ms = 4000) {
     constexpr int kMaxHttpGetBytes = 12288;
     while (total < kMaxHttpGetBytes) {
         int to_read = std::min((int)sizeof(chunk), kMaxHttpGetBytes - total);
-        int read = http->Read(chunk, to_read);
-        if (read <= 0) break;
-        response.append(chunk, read);
-        total += read;
+        auto read = http->Read(chunk, to_read);
+        if (!read || *read <= 0) break;
+        response.append(chunk, *read);
+        total += *read;
     }
     http->Close();
     return response;
@@ -572,7 +575,8 @@ static std::string HttpGetPartial(const char* url, int max_bytes, int timeout_ms
     http->SetKeepAlive(false);
     http->SetHeader("User-Agent", "ESP32-Riri-Boneka/1.0");
     if (!http->Open("GET", url)) return "";
-    if (http->GetStatusCode() != 200) {
+    auto status_code = http->GetStatusCode();
+    if (!status_code || *status_code != 200) {
         http->Close();
         return "";
     }
@@ -582,10 +586,10 @@ static std::string HttpGetPartial(const char* url, int max_bytes, int timeout_ms
     int total = 0;
     while (total < max_bytes) {
         int to_read = std::min((int)sizeof(chunk), max_bytes - total);
-        int read = http->Read(chunk, to_read);
-        if (read <= 0) break;
-        result.append(chunk, read);
-        total += read;
+        auto read = http->Read(chunk, to_read);
+        if (!read || *read <= 0) break;
+        result.append(chunk, *read);
+        total += *read;
     }
     http->Close();
     return result;

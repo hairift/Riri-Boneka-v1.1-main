@@ -74,7 +74,7 @@ public:
     CampusMcpTools() {
         auto& mcp = McpServer::GetInstance();
 
-        auto* campus_query = new McpTool("self.campus.query",
+        auto campus_query = std::make_unique<McpTool>("self.campus.query",
             "WAJIB gunakan tool ini lebih dulu untuk semua pertanyaan tentang Universitas Catur Insan Cendekia, UCIC, CIC, kampus, rektor, dosen, semester, kurikulum, mata kuliah, prodi, jurusan, fakultas, akreditasi, biaya kuliah, DPP, gedung, Total, beasiswa, PMB, lokasi, kontak, fasilitas, visi misi, profil, agama kampus, dan data akademik internal. "
             "Jika pengguna bertanya tentang semester, mata kuliah, dosen, prodi, jurusan, fakultas, biaya, PMB, beasiswa, alamat, atau kontak tanpa menyebut nama kampus, tetap asumsikan konteks default-nya adalah UCIC kecuali pengguna menyebut kampus lain secara eksplisit. "
             "Jika pengguna meminta rekomendasi jurusan, perbandingan antar prodi seperti Teknik Informatika vs Sistem Informasi, atau menanyakan jurusan yang cocok tanpa menyebut kampus lain, tetap anggap konteks default-nya UCIC. "
@@ -103,9 +103,9 @@ public:
                 return std::string("Data tidak ditemukan untuk: " + keyword);
             });
         campus_query->set_run_on_main_thread(false);
-        mcp.AddTool(campus_query);
+        mcp.AddTool(std::move(campus_query));
 
-        auto* academic_policy = new McpTool("self.academic.policy",
+        auto academic_policy = std::make_unique<McpTool>("self.academic.policy",
             "Gunakan tool ini saat Anda perlu pedoman lokal agar jawaban robot ini konsisten sebagai customer service kampus, dosen, akademisi, dan asisten ilmiah. "
             "Sangat berguna sebelum menjawab pertanyaan kompleks, akademik, atau pertanyaan kampus yang menuntut ketelitian tinggi.",
             PropertyList(),
@@ -135,9 +135,9 @@ public:
                     "14. Jika pengguna meminta memutar lagu atau musik, panggil self.music.play dengan nama penyanyi dan judul lagu apa adanya, lalu sampaikan kembali kalimat status dari tool tersebut tanpa menambah klaim baru. Tool itu menjawab bahwa lagunya sedang dicari, jadi jangan pernah berkata lagunya gagal atau tidak ditemukan setelah memanggilnya. Untuk permintaan berhenti, panggil self.music.stop.");
             });
         academic_policy->set_run_on_main_thread(false);
-        mcp.AddTool(academic_policy);
+        mcp.AddTool(std::move(academic_policy));
 
-        auto* web_search = new McpTool("self.web.search",
+        auto web_search = std::make_unique<McpTool>("self.web.search",
             "Cari informasi TERBARU dari Wikipedia. "
             "HANYA gunakan untuk pertanyaan yang BUTUH data terkini atau dapat berubah: "
             "jabatan politik, pemimpin negara, pejabat publik, tokoh publik, kampus lain di luar UCIC, peristiwa terkini, hasil pemilu, atau statistik terbaru. "
@@ -157,9 +157,9 @@ public:
                 return std::string("Tidak dapat mencari di internet saat ini.");
             });
         web_search->set_run_on_main_thread(false);
-        mcp.AddTool(web_search);
+        mcp.AddTool(std::move(web_search));
 
-        auto* music_play = new McpTool("self.music.play",
+        auto music_play = std::make_unique<McpTool>("self.music.play",
             "Putar lagu atau musik lewat speaker boneka. "
             "Gunakan tool ini setiap kali pengguna meminta memutar musik, memainkan lagu, menyetel lagu, request lagu, "
             "atau menyebut kalimat seperti 'putarkan lagu', 'mainkan lagu', 'setel lagu', 'puterin musik', 'play', atau 'nyanyikan lagu' yang diikuti judul lagu maupun nama penyanyi. "
@@ -185,9 +185,9 @@ public:
                 return MusicPlayer::GetInstance().Play(song, artist);
             });
         music_play->set_run_on_main_thread(false);
-        mcp.AddTool(music_play);
+        mcp.AddTool(std::move(music_play));
 
-        auto* music_stop = new McpTool("self.music.stop",
+        auto music_stop = std::make_unique<McpTool>("self.music.stop",
             "Hentikan musik yang sedang diputar boneka. "
             "Gunakan tool ini saat pengguna meminta berhenti, stop, matikan lagu, sudah cukup lagunya, atau ganti topik dari musik.",
             PropertyList(),
@@ -200,7 +200,7 @@ public:
                 return std::string("Musik dihentikan.");
             });
         music_stop->set_run_on_main_thread(false);
-        mcp.AddTool(music_stop);
+        mcp.AddTool(std::move(music_stop));
 
         ESP_LOGI(CAMPUS_MCP_TAG, "Campus + Web Search + Music tools registered (%d campus entries)", GetCampusEntryCount());
     }
