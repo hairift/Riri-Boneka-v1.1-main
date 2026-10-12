@@ -223,6 +223,11 @@ void SingleLed::OnStateChanged() {
             TurnOn();
             break;
 
+        case kDeviceStateNotifying:
+            SetColor(0, DEFAULT_BRIGHTNESS, 0);
+            TurnOn();
+            break;
+
         case kDeviceStateUpgrading:
             SetColor(COLOR_GREEN);
             StartContinuousBlink(100);
